@@ -79,6 +79,7 @@ export function createLogGate(opts: { now?: () => number; baseMs?: number; maxMs
   let backoff = baseMs;
   let refusals = 0; // in a row
   let probing = false;
+  const reopenListeners = new Set<() => void>();
 
   return {
     /** Run one log request through the gate. */
@@ -92,9 +93,19 @@ export function createLogGate(opts: { now?: () => number; baseMs?: number; maxMs
       }
       try {
         const out = await fn();
+        const wasClosed = closedUntil > 0;
         closedUntil = 0;
         backoff = baseMs;
         refusals = 0;
+        // After this request has settled, so a listener's own requests find
+        // the gate open and not mid-probe.
+        if (wasClosed) {
+          for (const listener of reopenListeners) {
+            queueMicrotask(() => {
+              try { listener(); } catch (e) { console.error("[logs] a reopen listener failed:", (e as Error).message); }
+            });
+          }
+        }
         return out;
       } catch (e) {
         if (isRateLimited(e)) {
@@ -112,6 +123,15 @@ export function createLogGate(opts: { now?: () => number; baseMs?: number; maxMs
     state: () => {
       const t = now();
       return { open: closedUntil === 0 || t >= closedUntil, retryInMs: Math.max(0, closedUntil - t), refusals };
+    },
+
+    /**
+     * Call `fn` each time a request succeeds while the gate was closed: the
+     * node takes requests again (Issue 43, fix 2). Returns the unsubscribe.
+     */
+    onReopen(fn: () => void): () => void {
+      reopenListeners.add(fn);
+      return () => { reopenListeners.delete(fn); };
     },
   };
 }
@@ -200,6 +220,11 @@ export function createLogRoute<E extends LogEndpoint>(endpoints: E[]) {
         retryInMs: open ? 0 : Math.min(...states.map((s) => s.retryInMs)),
         refusals: states.reduce((a, s) => a + s.refusals, 0),
       };
+    },
+    /** Call `fn` when any endpoint's gate reopens. Returns the unsubscribe. */
+    onReopen(fn: () => void): () => void {
+      const offs = endpoints.map((ep) => ep.gate.onReopen(fn));
+      return () => { for (const off of offs) off(); };
     },
   };
 }

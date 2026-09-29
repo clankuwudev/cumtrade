@@ -13,7 +13,7 @@ import { createLogRetry } from "./logRetry.js";
 import * as history from "../core/lib/history.js";
 import { poolFor as v4PoolFor } from "../core/market/v4.js";
 import { json } from "./http.js";
-import { BACKFILL, BOARD_MAX, DEAD_AFTER_S, POOL, REFRESH_MS, SWEEP_MS } from "./config.js";
+import { BACKFILL, BOARD_MAX, DEAD_AFTER_S, MISSED_GRACE_MS, POOL, REFRESH_MS, SWEEP_MS } from "./config.js";
 
 export type Row = {
   token: Address; curve: Address; creator: Address;
@@ -237,7 +237,8 @@ function placeholder(token: Address, curve: Address, creator: Address, block: nu
 
 /**
  * Launches the log node refused to let us analyse, tried again once it lets us
- * (public-release B4.6). Ticked by the refresh sweep.
+ * (public-release B4.6). Ticked when a log gate reopens (Issue 43, fix 2), and
+ * by the refresh sweep in case that was missed.
  */
 const retry = createLogRetry({
   gateOpen: () => logRoute.state().open,
@@ -246,6 +247,7 @@ const retry = createLogRetry({
   },
   analyse: (w) => analyseInto(w.token, w.curve, w.creator, w.block),
   pool: POOL,
+  onReopen: (fn) => { logRoute.onReopen(fn); },
 });
 
 /** What analysing a launch calls out to, so a test can run it without a chain. */
@@ -500,7 +502,7 @@ async function backfillOnce(opts: { active?: () => boolean; gate?: LaunchGate })
   if (!active()) return;
   // Launches after the newest one here are new: the index puts them on the
   // board as it commits them (step 5, above).
-  indexFeed({ cut: all.at(-1)?.block ?? 0n, gate: opts.gate });
+  indexFeed({ cut: all.at(-1)?.block ?? 0n, gate: opts.gate, active });
   // Never more than the board holds (B4.1): the rest would be analysed only
   // to be dropped again.
   const take = Math.min(BACKFILL, BOARD_MAX);
@@ -622,22 +624,39 @@ function rejudgeHolders(key: string) {
 // a restart (current-issues.md #6, step 5). Now each launch the follower
 // commits goes on the board too, so a dead websocket only costs a round.
 //
-// Hosted only: a self page's feed calls the sniper for each launch, and a
-// launch the index put on the board first would never reach it. Only
-// launches after the newest one the backfill saw: the follower's first rounds
-// commit the whole history, which is the backfill's to load.
+// Self mode too, since Issue 43 (fix 4): a launch that landed while the
+// websocket was still subscribing never reached the board. A self page's feed
+// calls the sniper for each launch, and a launch the index put on the board
+// first would skip it there, so in self mode the index waits `graceMs` and
+// takes only what the websocket did not deliver. Those go on the board
+// without the sniper (the user's choice, 2026-09-30).
+//
+// Only launches after the newest one the backfill saw: the follower's first
+// rounds commit the whole history, which is the backfill's to load.
 
-/** Whether the index feeds the board, the newest launch the backfill saw, and the list gate if any. */
-const fromIndex: { on: boolean; cut: bigint | null; gate?: LaunchGate } = { on: false, cut: null };
+/**
+ * Whether the index feeds the board, the newest launch the backfill saw, the
+ * list gate if any, how long self mode waits for the websocket, and whether
+ * the backfill that set the cut is still live (self's off switch).
+ */
+const fromIndex: {
+  on: boolean; cut: bigint | null; gate?: LaunchGate; graceMs: number; active?: () => boolean;
+} = { on: false, cut: null, graceMs: 0 };
 
 /** Set how the index feeds the board. The feed and the backfill set it; a test sets it directly. */
 export function indexFeed(s: Partial<typeof fromIndex>) {
   Object.assign(fromIndex, s);
 }
 
+/** Self mode: launches the websocket delivered, so the index leaves them to it. */
+const feedSaw = new Set<string>();
+/** Self mode: launches the index put on the board because the websocket had not delivered them. */
+const caughtByIndex = new Set<string>();
+
 /**
  * Put the launches a committed window found on the board, as the websocket's
- * feed does, minus the sniper. Returns how many it started.
+ * feed does, minus the sniper. Returns how many it started, or in self mode
+ * how many it will take if the websocket has not delivered them by then.
  */
 export function addIndexedLaunches(
   launches: { token: string; curve: string; creator: string; block: bigint }[], deps: AnalyseDeps = ANALYSE_DEPS,
@@ -649,17 +668,33 @@ export function addIndexedLaunches(
   if (!fromIndex.on || fromIndex.cut === null) return 0;
   let started = 0;
   for (const l of launches) {
-    if (l.block <= fromIndex.cut || rows.has(l.token.toLowerCase())) continue;
+    const key = l.token.toLowerCase();
+    if (l.block <= fromIndex.cut) continue;
+    // The websocket had it first: its launch, and its sniper call.
+    if (fromIndex.graceMs > 0 && feedSaw.delete(key)) continue;
+    if (rows.has(key)) continue;
     started++;
-    const token = l.token as Address, creator = l.creator as Address;
-    broadcast("launch", { token, block: Number(l.block) });
-    const gate = fromIndex.gate;
-    const analyse = () => analyseInto(token, l.curve as Address, creator, Number(l.block), deps);
-    // With no list, its card goes up now, so a second window naming it finds it there.
-    void withSource("launch", () => (gate ? gate(token, creator).then((wanted) => (wanted ? analyse() : undefined)) : analyse()))
-      .catch((e) => console.error("[board] a launch from the index failed:", (e as Error).message));
+    if (fromIndex.graceMs > 0) setTimeout(() => startIndexed(l, deps, true), fromIndex.graceMs).unref();
+    else startIndexed(l, deps, false);
   }
   return started;
+}
+
+function startIndexed(l: { token: string; curve: string; creator: string; block: bigint }, deps: AnalyseDeps, waited: boolean) {
+  const key = l.token.toLowerCase();
+  if (waited) {
+    // Delivered by the websocket meanwhile, switched off, or on the board by now.
+    if (feedSaw.delete(key) || fromIndex.active?.() === false || rows.has(key)) return;
+    caughtByIndex.add(key);
+    console.log(`new launch ${l.token}, from the index: the websocket did not deliver it`);
+  }
+  const token = l.token as Address, creator = l.creator as Address;
+  broadcast("launch", { token, block: Number(l.block) });
+  const gate = fromIndex.gate;
+  const analyse = () => analyseInto(token, l.curve as Address, creator, Number(l.block), deps);
+  // With no list, its card goes up now, so a second window naming it finds it there.
+  void withSource("launch", () => (gate ? gate(token, creator).then((wanted) => (wanted ? analyse() : undefined)) : analyse()))
+    .catch((e) => console.error("[board] a launch from the index failed:", (e as Error).message));
 }
 
 onIndexCommit((w) => { addIndexedLaunches(w.launches); });
@@ -699,11 +734,56 @@ export type LaunchHook = (
   graduationThreshold?: bigint,
 ) => Promise<unknown>;
 
+/**
+ * One launch the websocket delivered: onto the board, then to the sniper when
+ * there is one. The first sight of a launch is broadcast and analysed. One the
+ * index already put on the board (self mode, the websocket late) goes to the
+ * sniper only, with no second broadcast, so the sniper sees every launch the
+ * websocket delivers, as before Issue 43.
+ */
+export function fromFeed(
+  l: { token: Address; curve: Address; creator: Address; block: bigint; graduationThreshold: bigint },
+  onLaunch?: LaunchHook, gate?: LaunchGate, deps: AnalyseDeps = ANALYSE_DEPS,
+): void {
+  const { token, curve, creator, graduationThreshold } = l;
+  const key = token.toLowerCase();
+  if (fromIndex.graceMs > 0) feedSaw.add(key);
+  const late = caughtByIndex.delete(key);
+  if (rows.has(key) && !late) return;
+  // Feed the index directly so no history rescan is triggered.
+  noteLaunch({ token, curve, creator, block: l.block, graduationThreshold });
+  const detectedAt = Date.now();
+  const block = Number(l.block);
+  if (late) {
+    console.log(`launch ${token} reached the websocket late; the sniper still judges it`);
+  } else {
+    console.log(`new launch ${token}`);
+    broadcast("launch", { token, block });
+  }
+  // Counted as a launch (D1.0): the whole chain is started inside, so
+  // every step of it is.
+  void withSource("launch", () => (gate ? gate(token, creator) : Promise.resolve(true)).then((wanted) => {
+    // Not on the list: seen, broadcast, and left there. Analysing it
+    // would spend the read budget on a launch nobody asked about.
+    if (!wanted) return;
+    // Late, the index already analysed it for the board.
+    return (late ? Promise.resolve() : analyseInto(token, curve, creator, block, deps))
+    // analyse() is cached by this point, so judging costs almost nothing
+    // extra. It runs whether or not the sniper is armed — a decision to
+    // decline is the one worth recording.
+    .then(() => onLaunch?.(token, curve, creator, block, detectedAt, graduationThreshold));
+  }).catch((e) => console.error("[sniper] judge failed:", (e as Error).message)));
+}
+
 /** Watch the factory for launches. Returns the unwatch, or null with no feed. */
 export function subscribe(onLaunch?: LaunchHook, gate?: LaunchGate): (() => void) | null {
-  // Without a sniper to call, the index feeds the board too (step 5), with or
-  // without a websocket.
-  indexFeed({ on: !onLaunch });
+  // The index feeds the board too (step 5), with or without a websocket. With
+  // a sniper and a websocket, only what the websocket has not delivered in
+  // `MISSED_GRACE_MS` (Issue 43, fix 4). Each start waits for its own
+  // backfill's cut, as the first one does.
+  indexFeed({ on: true, cut: null, graceMs: onLaunch && wsClient ? MISSED_GRACE_MS : 0 });
+  feedSaw.clear();
+  caughtByIndex.clear();
   if (!wsClient) {
     console.warn("WS_URL not set — live launches will not stream in.");
     return null;
@@ -722,31 +802,13 @@ export function subscribe(onLaunch?: LaunchHook, gate?: LaunchGate): (() => void
         if (l.topics[0]?.toLowerCase() !== VENUE.launchTopic) continue;
         if (!factoryAt(l.address)) continue;
         const token = `0x${l.topics[1]!.slice(26)}` as Address;
-        if (rows.has(token.toLowerCase())) continue;
         const curve = `0x${l.topics[2]!.slice(26)}` as Address;
         const creator = `0x${l.topics[3]!.slice(26)}` as Address;
         // The graduation target rides along in the event, so the sniper can
         // judge a launch's shape before anything has traded (pons-venue.md V5).
         const data = (l as { data?: `0x${string}` }).data ?? "0x";
         const graduationThreshold = data.length >= 2 + 3 * 64 ? BigInt(`0x${data.slice(2 + 2 * 64, 2 + 3 * 64)}`) : 0n;
-        // Feed the index directly so no history rescan is triggered.
-        noteLaunch({ token, curve, creator, block: l.blockNumber ?? 0n, graduationThreshold });
-        console.log(`new launch ${token}`);
-        broadcast("launch", { token, block: Number(l.blockNumber ?? 0n) });
-        const detectedAt = Date.now();
-        const block = Number(l.blockNumber ?? 0n);
-        // Counted as a launch (D1.0): the whole chain is started inside, so
-        // every step of it is.
-        void withSource("launch", () => (gate ? gate(token, creator) : Promise.resolve(true)).then((wanted) => {
-          // Not on the list: seen, broadcast, and left there. Analysing it
-          // would spend the read budget on a launch nobody asked about.
-          if (!wanted) return;
-          return analyseInto(token, curve, creator, block)
-          // analyse() is cached by this point, so judging costs almost nothing
-          // extra. It runs whether or not the sniper is armed — a decision to
-          // decline is the one worth recording.
-          .then(() => onLaunch?.(token, curve, creator, block, detectedAt, graduationThreshold));
-        }).catch((e) => console.error("[sniper] judge failed:", (e as Error).message)));
+        fromFeed({ token, curve, creator, block: l.blockNumber ?? 0n, graduationThreshold }, onLaunch, gate);
       }
     },
     onError: (e) => console.error("ws error:", e.message),

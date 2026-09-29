@@ -133,6 +133,30 @@ console.log("\na launch that left the board (B4.1)");
     log.analysed.join(","));
 }
 
+console.log("\na pass when the gate reopens, not only on the sweep (Issue 43, fix 2)");
+{
+  let reopen: (() => void) | null = null;
+  const state = { open: false };
+  const analysed: string[] = [];
+  const q = createLogRetry({
+    gateOpen: () => state.open,
+    prefetch: async () => {},
+    analyse: async (w) => { analysed.push(w.token); },
+    pool: 8,
+    onReopen: (fn) => { reopen = fn; },
+  });
+  ok("it listens from the start", reopen !== null);
+  q.defer(launch(1));
+  q.defer(launch(2));
+  state.open = true;
+  reopen!();
+  await new Promise((r) => setTimeout(r, 10));
+  ok("the gate reopening runs a pass: both analysed, nothing left waiting", analysed.length === 2 && q.size === 0, analysed.join(","));
+  reopen!();
+  await new Promise((r) => setTimeout(r, 10));
+  ok("…and with nothing waiting, a reopening does nothing", analysed.length === 2);
+}
+
 console.log(failures === 0
   ? "\n\x1b[32mall retry queue checks passed\x1b[0m\n"
   : `\n\x1b[31m${failures} check(s) failed\x1b[0m\n`);

@@ -177,6 +177,57 @@ console.log("\nthe gate");
     && (await failedProbe.run(answer).then(() => true, () => false)));
 }
 
+console.log("\nthe gate says when it reopens (Issue 43, fix 2)");
+{
+  let t = 0;
+  const gate = createLogGate({ now: () => t });
+  const refusal = () => Promise.reject(Object.assign(new Error("RPC Request failed."), { code: 429 }));
+  const answer = () => Promise.resolve("logs");
+  // Listeners run after the request settles, on the microtask queue.
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  let fired = 0;
+  const off = gate.onReopen(() => { fired++; });
+
+  await gate.run(answer); await settle();
+  ok("an ordinary success is not a reopening", fired === 0);
+  await gate.run(refusal).catch(() => {});
+  t += 30_000;
+  await gate.run(refusal).catch(() => {});
+  await settle();
+  ok("a probe refused again is not one either", fired === 0 && !gate.state().open);
+  t += 60_000;
+  await gate.run(answer); await settle();
+  ok("the probe that gets through is, once", fired === 1 && gate.state().open);
+  await gate.run(answer); await settle();
+  ok("…and the successes after it are not", fired === 1);
+
+  // A request already out when another is refused: its answer reopens the gate, and says so.
+  let release!: () => void;
+  const inflight = gate.run(() => new Promise<string>((r) => { release = () => r("logs"); }));
+  await gate.run(refusal).catch(() => {});
+  ok("(the gate closed behind it)", !gate.state().open);
+  release(); await inflight; await settle();
+  ok("a request in flight when the gate closed reopens it, and says so", gate.state().open && fired === 2);
+
+  const order: string[] = [];
+  const offBad = gate.onReopen(() => { throw new Error("a listener's bug"); });
+  const offNext = gate.onReopen(() => { order.push("next"); });
+  const realError = console.error;
+  console.error = () => {};
+  await gate.run(refusal).catch(() => {});
+  t += 30_000;
+  const got = await gate.run(answer);
+  await settle();
+  console.error = realError;
+  ok("a listener that throws breaks neither the request nor the others", got === "logs" && order.join() === "next" && fired === 3);
+
+  off(); offBad(); offNext();
+  await gate.run(refusal).catch(() => {});
+  t += 30_000;
+  await gate.run(answer); await settle();
+  ok("unsubscribed, it is not called", fired === 3 && order.length === 1);
+}
+
 // ----------------------------------------------------------------- route --
 console.log("\nthe route across log endpoints (D1.0)");
 {
@@ -211,6 +262,32 @@ console.log("\nthe route across log endpoints (D1.0)");
   t += 30_000;
   asked.length = 0;
   ok("once the first reopens, it is asked first again", await route.run(answer({})) === "alchemy" && asked.join() === "alchemy", asked.join());
+}
+
+console.log("\nthe route says when any endpoint reopens (Issue 43, fix 2)");
+{
+  let t = 0;
+  const alchemy = { name: "alchemy", url: "a", gate: createLogGate({ now: () => t }) };
+  const pub = { name: "public", url: "p", gate: createLogGate({ now: () => t }) };
+  const route = createLogRoute([alchemy, pub]);
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const refusal = () => Promise.reject(Object.assign(new Error("Too Many Requests"), { code: 429 }));
+  let fired = 0;
+  const off = route.onReopen(() => { fired++; });
+
+  await pub.gate.run(refusal).catch(() => {});
+  t += 30_000;
+  await pub.gate.run(() => Promise.resolve("tail")); await settle();
+  ok("the public node reopening (the follower's tail probes it) is heard on the route", fired === 1);
+  await alchemy.gate.run(refusal).catch(() => {});
+  t += 30_000;
+  await route.run(() => Promise.resolve("logs")); await settle();
+  ok("…and so is the first endpoint reopening", fired === 2);
+  off();
+  await pub.gate.run(refusal).catch(() => {});
+  t += 30_000;
+  await pub.gate.run(() => Promise.resolve("tail")); await settle();
+  ok("unsubscribed from the route, from every endpoint", fired === 2);
 }
 
 console.log(failures === 0

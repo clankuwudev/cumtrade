@@ -16,6 +16,9 @@ import type { ServerResponse } from "node:http";
 import type { Address } from "viem";
 
 process.env.WEB_BOARD_MAX = "5";
+// No websocket, whatever .env says: dotenv never overrides a variable already
+// set, and `subscribe` below must not open a real one.
+process.env.WS_URL = "";
 const dir = mkdtempSync(join(tmpdir(), "board-test-"));
 process.env.HISTORY_FILE = join(dir, "history.json");
 
@@ -23,7 +26,7 @@ const { fakeAnalysis, who } = await import("./analysisFixture.js");
 const history = await import("../core/lib/history.js");
 const board = await import("./board.js");
 const { rows, clients, upsert, setPinned, keptFor, analyseInto, addIndexedLaunches, indexFeed } = board;
-const { isDead, pickBackfill, dropDead, reviveTraded } = board;
+const { isDead, pickBackfill, dropDead, reviveTraded, fromFeed, subscribe } = board;
 type Row = import("./board.js").Row;
 type AnalyseDeps = import("./board.js").AnalyseDeps;
 
@@ -284,10 +287,70 @@ console.log("\nlaunches the index commits reach the board without the websocket 
   await new Promise((r) => setTimeout(r, 20));
   ok("…and once analysed it is ready", rows.get(key(0x21))?.status === "ready", rows.get(key(0x21))?.status);
 
-  // A self page's feed calls the sniper for each launch: the index stays out of it.
   indexFeed({ on: false });
-  ok("a self page's board is fed by its websocket alone", addIndexedLaunches([launch(0x25, 600)], quick) === 0 && !has(0x25));
+  ok("before a feed has started, the index feeds nothing", addIndexedLaunches([launch(0x25, 600)], quick) === 0 && !has(0x25));
   indexFeed({ on: false, cut: null });
+}
+
+console.log("\nself mode: the index catches what the websocket missed, and the sniper is untouched (Issue 43, fix 4)");
+{
+  reset();
+  const launch = (n: number, block: number) => ({ token: who(n), curve: who(0xc00 + n), creator: who(0xc4ea), block: BigInt(block) });
+  const fed = (n: number, block: number) => ({ ...launch(n, block), graduationThreshold: 0n });
+  const quick: AnalyseDeps = {
+    analyze: (async (addr: Address) => fakeAnalysis(addr, who(0xc0))) as AnalyseDeps["analyze"],
+    poolFor: (async () => null) as unknown as AnalyseDeps["poolFor"],
+  };
+  const judged: string[] = [];
+  const sniper = async (token: Address) => { judged.push(token.toLowerCase()); };
+  const launchEvents = (n: number) => events.filter((e) => e === `launch:${key(n)}`).length;
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  let live = true;
+  indexFeed({ on: true, cut: 400n, graceMs: 20, active: () => live });
+
+  // Missed by the websocket (the switch-on gap): waits the grace, then goes on the board.
+  ok("a launch the websocket has not delivered is taken, after the grace", addIndexedLaunches([launch(0x61, 500)], quick) === 1);
+  ok("…not at once: the websocket gets its chance", !has(0x61) && launchEvents(0x61) === 0);
+
+  // Delivered by the websocket first: the index leaves it alone.
+  fromFeed(fed(0x62, 510), sniper, undefined, quick);
+  ok("a launch the websocket delivered first is left to it", addIndexedLaunches([launch(0x62, 510)], quick) === 0);
+
+  // The index first, the websocket inside the grace: the websocket's, once.
+  ok("the index first…", addIndexedLaunches([launch(0x63, 520)], quick) === 1);
+  fromFeed(fed(0x63, 520), sniper, undefined, quick);
+
+  await wait(50);
+  ok("the missed launch is on the board and analysed", rows.get(key(0x61))?.status === "ready", rows.get(key(0x61))?.status);
+  ok("…announced once, and never sent to the sniper", launchEvents(0x61) === 1 && !judged.includes(key(0x61)), `${launchEvents(0x61)} ${judged.join()}`);
+  ok("the websocket's launches reach the sniper once each, as before", judged.filter((t) => t === key(0x62)).length === 1
+    && judged.filter((t) => t === key(0x63)).length === 1, judged.join());
+  ok("…announced once each, though the index named one first", launchEvents(0x62) === 1 && launchEvents(0x63) === 1, events.join(" "));
+
+  // The websocket late, after the index put it up: the sniper still judges it, with no second toast.
+  fromFeed(fed(0x61, 500), sniper, undefined, quick);
+  await wait(20);
+  ok("a launch the websocket delivers late still goes to the sniper, once", judged.filter((t) => t === key(0x61)).length === 1, judged.join());
+  ok("…with no second announcement", launchEvents(0x61) === 1);
+  fromFeed(fed(0x61, 500), sniper, undefined, quick);
+  await wait(20);
+  ok("…and a repeat of it is ignored, as any launch on the board is", judged.filter((t) => t === key(0x61)).length === 1);
+
+  // Switched off while it waited: nothing goes up.
+  addIndexedLaunches([launch(0x64, 530)], quick);
+  live = false;
+  await wait(50);
+  ok("a launch whose grace ends with the system off is not added", !has(0x64) && launchEvents(0x64) === 0);
+
+  // Each start waits for its own backfill's cut; with no websocket, no grace.
+  live = true;
+  ok("with no websocket, subscribe has nothing to watch", subscribe(sniper) === null);
+  ok("…the start clears the old cut, so nothing is fed before the new backfill's", addIndexedLaunches([launch(0x65, 900)], quick) === 0 && !has(0x65));
+  indexFeed({ cut: 400n });
+  ok("…and with no websocket the index feeds the board at once, without the sniper", addIndexedLaunches([launch(0x66, 910)], quick) === 1 && has(0x66));
+  await wait(20);
+  ok("…never judged", !judged.includes(key(0x66)));
+  indexFeed({ on: false, cut: null, graceMs: 0, active: undefined });
 }
 
 console.log("\ngraduated tokens always load, dead launches don't (B6; the user: CABO and CLANKCAT fell off after a restart)");

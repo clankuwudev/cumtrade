@@ -9,7 +9,8 @@ import { isRateLimited } from "../core/lib/logGate.js";
  * here. Each tick, if the gate is open, one pass takes everything waiting,
  * newest launch first, `pool` at a time: one holders prefetch for the chunk,
  * then its analyses. A refusal stops the pass, and whatever is left waits for
- * the next tick. One prefetch for everything was refused outright once the
+ * the next tick. A tick comes from the sweep, and from the gate reopening
+ * (Issue 43, fix 2). One prefetch for everything was refused outright once the
  * board passed a hundred launches (2026-09-23): a scan that wide is one the
  * public node will not take, however long it is left to rest.
  *
@@ -26,9 +27,46 @@ export function createLogRetry(deps: {
   /** Analyse one launch. It defers the launch again itself if it is refused. */
   analyse: (w: Waiting) => Promise<void>;
   pool: number;
+  /** Subscribe to the gate reopening, so a pass runs then, not only on the sweep's tick (Issue 43, fix 2). */
+  onReopen?: (fn: () => void) => void;
 }) {
   const waiting = new Map<string, Waiting>();
   let running = false;
+
+  /** One pass, if anything waits and the gate is open. Never runs twice at once. */
+  async function tick(): Promise<{ analysed: number }> {
+    if (running || waiting.size === 0 || !deps.gateOpen()) return { analysed: 0 };
+    running = true;
+    let analysed = 0;
+    try {
+      // Newest first: the shortest scans, and the launches people look at.
+      const batch = [...waiting.values()].sort((a, b) => b.block - a.block);
+      for (let i = 0; i < batch.length; i += deps.pool) {
+        // A refusal earlier in this pass closed the gate: stop here.
+        if (!deps.gateOpen()) break;
+        const chunk = batch.slice(i, i + deps.pool);
+        try {
+          await deps.prefetch(chunk);
+        } catch (e) {
+          // Refused again: this chunk and the rest keep waiting, and the
+          // gate's backoff grows.
+          if (isRateLimited(e)) return { analysed };
+          // Anything else: each analysis scans for itself, as the backfill's
+          // fallback always has.
+        }
+        for (const w of chunk) waiting.delete(w.token.toLowerCase());
+        await Promise.all(chunk.map((w) => deps.analyse(w)));
+        analysed += chunk.length;
+      }
+      return { analysed };
+    } finally {
+      running = false;
+    }
+  }
+
+  deps.onReopen?.(() => {
+    void tick().catch((e) => console.error("[retry] a pass on the gate reopening failed:", (e as Error).message));
+  });
 
   return {
     defer(w: Waiting) {
@@ -44,36 +82,7 @@ export function createLogRetry(deps: {
       waiting.delete(token.toLowerCase());
     },
 
-    /** One pass, if anything waits and the gate is open. Never runs twice at once. */
-    async tick(): Promise<{ analysed: number }> {
-      if (running || waiting.size === 0 || !deps.gateOpen()) return { analysed: 0 };
-      running = true;
-      let analysed = 0;
-      try {
-        // Newest first: the shortest scans, and the launches people look at.
-        const batch = [...waiting.values()].sort((a, b) => b.block - a.block);
-        for (let i = 0; i < batch.length; i += deps.pool) {
-          // A refusal earlier in this pass closed the gate: stop here.
-          if (!deps.gateOpen()) break;
-          const chunk = batch.slice(i, i + deps.pool);
-          try {
-            await deps.prefetch(chunk);
-          } catch (e) {
-            // Refused again: this chunk and the rest keep waiting, and the
-            // gate's backoff grows.
-            if (isRateLimited(e)) return { analysed };
-            // Anything else: each analysis scans for itself, as the backfill's
-            // fallback always has.
-          }
-          for (const w of chunk) waiting.delete(w.token.toLowerCase());
-          await Promise.all(chunk.map((w) => deps.analyse(w)));
-          analysed += chunk.length;
-        }
-        return { analysed };
-      } finally {
-        running = false;
-      }
-    },
+    tick,
 
     get size() {
       return waiting.size;

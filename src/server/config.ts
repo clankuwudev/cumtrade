@@ -32,6 +32,12 @@ export const REFRESH_MS = Number(process.env.WEB_REFRESH_MS ?? 10_000);
  * (spec D1.3, the user's 2 minutes).
  */
 export const SWEEP_MS = Number(process.env.WEB_SWEEP_MS ?? 120_000);
+/**
+ * Self mode: how long a launch the index commits waits for the websocket to
+ * deliver it before the index puts it on the board itself (Issue 43, fix 4).
+ * The websocket is normally first by a second or two.
+ */
+export const MISSED_GRACE_MS = Number(process.env.WEB_MISSED_GRACE_MS ?? 10_000);
 /** Tokens analysed concurrently, so multicalls fold across them. */
 export const POOL = Number(process.env.WEB_POOL ?? 8);
 /**
