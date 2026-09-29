@@ -9,7 +9,7 @@
 //   npm run test:curve
 import { strict as assert } from "node:assert";
 import { parseEther } from "viem";
-import { buyOnCurve } from "./curve.js";
+import { buyOnCurve, minOutForBuy, minOutOf } from "./curve.js";
 
 let failures = 0;
 const check = (name: string, fn: () => void) => {
@@ -73,6 +73,24 @@ check("the shape of a real launch prices sanely", () => {
   // 0.0099 into 1.68 is ~0.59% of the pool, so ~0.58% of supply after the curve.
   const pct = Number(r.expected * 10_000n / parseEther("1000000000")) / 100;
   assert.ok(pct > 0.5 && pct < 0.6, `got ${pct}% of supply`);
+});
+
+console.log("\nthe buy that finishes the curve (V4R D5)");
+
+check("a buy the curve takes whole keeps the plain minimum", () => {
+  assert.equal(minOutForBuy(1_000_000n, 500, parseEther("1"), parseEther("1")), minOutOf(1_000_000n, 500));
+});
+
+check("a partial fill scales the minimum up by sent / used, rounding up", () => {
+  // 950,000 x 1 / 0.75 = 1,266,666.67, rounded up: the curve then checks 1,266,667 x 0.75 / 1 >= 950,000.
+  const scaled = minOutForBuy(1_000_000n, 500, parseEther("1"), parseEther("0.75"));
+  assert.equal(scaled, 1_266_667n);
+  assert.ok((scaled * parseEther("0.75")) / parseEther("1") >= minOutOf(1_000_000n, 500), "the proportional check still holds the slippage asked for");
+});
+
+check("nothing used, or more than sent, never lowers the minimum", () => {
+  assert.equal(minOutForBuy(1_000_000n, 500, parseEther("1"), 0n), minOutOf(1_000_000n, 500));
+  assert.equal(minOutForBuy(1_000_000n, 500, parseEther("1"), parseEther("2")), minOutOf(1_000_000n, 500));
 });
 
 console.log(failures ? `\n\x1b[31m${failures} curve check(s) failed\x1b[0m\n` : "\n\x1b[32mall curve maths checks passed\x1b[0m\n");

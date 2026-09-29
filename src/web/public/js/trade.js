@@ -795,6 +795,8 @@ export function tradeBar(r) {
   // A bonded token trades on V4, not the curve — but only once a pool has
   // actually been found. Without one there is genuinely nowhere to send it.
   if (r.graduated && !r.v4) return "";
+  // Paired with an ERC-20 (V4R D3): not traded here, so no buttons.
+  if (r.pairToken) return "";
   const blocked = buyBlocked();
   const risky = !r.graduated && (r.sellable === false || r.band === "AVOID");
   const h = held.get(String(r.token).toLowerCase());

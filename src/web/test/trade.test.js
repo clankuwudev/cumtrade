@@ -997,3 +997,11 @@ test("the main wallet never approves ahead: its sells keep P3's approvals inside
     S.conn = null;
   }
 });
+
+test("a card for a launch paired with an ERC-20 draws no trade bar (V4R D3)", () => hosted(() => {
+  const row = { token: "0x00000000000000000000000000000000000070a1", status: "ready", graduated: false,
+    sellable: true, band: "CLEAN", pairToken: "0x00000000000000000000000000000000000E20c0" };
+  S.conn = conn();
+  assert.equal(String(tradeBar(row)), "");
+  assert.match(tradeBar({ ...row, pairToken: null }).s, /data-buy=/, "native ETH still trades");
+}));

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PERMIT2, READ, SEL, UNIVERSAL_ROUTER } from "../public/js/trade/constants.js";
 import { Refused, checkTrade } from "../public/js/trade/guard.js";
-import { word } from "./support/calldata.js";
+import { reswap, word } from "./support/calldata.js";
 
 const { chain, plans } = JSON.parse(readFileSync(new URL("./fixtures/plans.json", import.meta.url), "utf8"));
 const lower = (a) => String(a).toLowerCase();
@@ -114,6 +114,10 @@ test("the router: another command, other actions, or a pool that isn't the token
   const i = swap.data.toLowerCase().indexOf(hook);
   await refused(tx(swap.to, `${swap.data.slice(0, i)}${"99".repeat(20)}${swap.data.slice(i + 40)}`, v), deps(), /not the one this token graduated into/);
   await refused(tx(swap.to, swap.data, v + 1n), deps(), /ETH is not what it puts in/);
+  // Robinhood's router reads a minHopPriceX36 (V4R): the generic tuple without
+  // it, and any floor at all, are refused.
+  await refused(tx(swap.to, reswap(swap.data, (s) => { s.legacy = true; }), v), deps(), /not encoded the one way/);
+  await refused(tx(swap.to, reswap(swap.data, (s) => { s.minHop = 1n; }), v), deps(), /per-hop price floor/);
 });
 
 test("approvals: Permit2 and the router pass; Permit2's own approve only for the router, within a week", async () => {

@@ -8,7 +8,7 @@ import { FACTORIES } from "../core/chain.js";
 import { curveAbi, factoryAbi, tokenAbi } from "../core/abi.js";
 import { immutable } from "../core/lib/cache.js";
 import {
-  approveCall, clampSlippage, curveBuyCall, curveSellCall, minOutOf, type Call,
+  approveCall, clampSlippage, curveBuyCall, curveSellCall, minOutForBuy, minOutOf, type Call,
 } from "../core/market/curve.js";
 import * as v4 from "../core/market/v4.js";
 import { rows } from "./board.js";
@@ -61,7 +61,7 @@ export type Step = {
 
 export type WarningCode =
   | "sell-sim-failed" | "band-avoid" | "price-impact" | "capped"
-  | "near-graduation" | "snipe-tax" | "venue-changed";
+  | "near-graduation" | "snipe-tax" | "venue-changed" | "quoter-unavailable" | "finishes-curve";
 
 export type Plan = {
   planId: string;
@@ -72,6 +72,8 @@ export type Plan = {
   quote: {
     amountIn: string; expectedOut: string; minOut: string;
     feeWei: string; snipeTaxWei: string; slippageBps: number; priceImpactBps: number;
+    /** A curve buy's input the curve takes, and what comes back, when it finishes the curve (V4R D5). */
+    usedWei?: string; refundWei?: string;
   };
   preparedAt: number; expiresAt: number;
   steps: Step[];
@@ -79,7 +81,7 @@ export type Plan = {
 };
 
 export type ErrorCode =
-  | "not-authentic" | "insufficient-funds" | "no-balance" | "no-pool" | "simulation-failed";
+  | "not-authentic" | "insufficient-funds" | "no-balance" | "no-pool" | "simulation-failed" | "unsupported-pair" | "quote-mismatch";
 
 export type Prepared =
   | { status: 200; body: Plan }
@@ -104,7 +106,7 @@ const refuse = (code: ErrorCode, text: string): Prepared => ({ status: 422, body
  * `curveHint` (from the board) lets the curve-side reads join the same wave as
  * the token-side ones. It is verified against the token, never trusted.
  */
-function wiring(token: Address, curveHint?: Address): Promise<{ curve: Address; symbol: string }> {
+function wiring(token: Address, curveHint?: Address): Promise<{ curve: Address; symbol: string; pairToken: Address }> {
   return immutable(`prepare-wiring:${token.toLowerCase()}`, () => readWiring(token, curveHint).catch((e) => {
     // A getter that reverts or returns nothing means the address is not a
     // launch token (or not a contract at all). Anything else is the RPC failing,
@@ -115,7 +117,7 @@ function wiring(token: Address, curveHint?: Address): Promise<{ curve: Address; 
   }));
 }
 
-async function readWiring(token: Address, curveHint?: Address): Promise<{ curve: Address; symbol: string }> {
+async function readWiring(token: Address, curveHint?: Address): Promise<{ curve: Address; symbol: string; pairToken: Address }> {
   const T = { address: token, abi: tokenAbi } as const;
   const curveSide = (curve: Address) => Promise.all([
     client.readContract({ address: curve, abi: curveAbi, functionName: "token" }),
@@ -142,12 +144,12 @@ async function readWiring(token: Address, curveHint?: Address): Promise<{ curve:
   // listed factory's entry never stands in for it.
   const own = FACTORIES.findIndex((f) => f.address.toLowerCase() === curveFactory.toLowerCase());
   if (own < 0) throw new NotAuthentic();
-  const [launched, registeredCurve] = entries[own]!;
+  const [launched, registeredCurve, , , pairToken] = entries[own]!;
   if (curveToken.toLowerCase() !== token.toLowerCase()
       || launched.toLowerCase() !== token.toLowerCase() || registeredCurve.toLowerCase() !== curve.toLowerCase()) {
     throw new NotAuthentic();
   }
-  return { curve, symbol };
+  return { curve, symbol, pairToken };
 }
 
 class NotAuthentic extends Error {}
@@ -269,6 +271,7 @@ export async function prepareBuy(body: Record<string, unknown>): Promise<Prepare
   ]);
   if (wired instanceof NotAuthentic) return refuse("not-authentic", "This is not a token launched by the clank.trade factory.");
   if (wired instanceof Error) throw wired;
+  if (BigInt(wired.pairToken) !== 0n) return refuse("unsupported-pair", new v4.UnsupportedPair(wired.pairToken).message);
   const { curve, symbol } = wired;
 
   if (balance < amountIn) {
@@ -306,11 +309,15 @@ export async function prepareBuy(body: Record<string, unknown>): Promise<Prepare
     // Simulated with no minimum: the fill IS the quote, and the minimum is taken
     // from it. The real call differs only in that minimum and its deadline.
     const probe = v4.routerCall({ data: v4.buildBuy(pool.key, amountIn, 0n, deadline), value: amountIn });
-    const sim = await simulate(from, [probe]);
+    // clank.trade's V4 Quoter is read alongside, as a cross-check (V4R D4).
+    const [sim, quoted] = await Promise.all([simulate(from, [probe]), v4.quoterOut(pool.key, true, amountIn)]);
     const why = failure(sim, ["the swap"]);
     if (why) return refuse("simulation-failed", why);
     const out = received(sim[0]!, token, from);
     if (out === 0n) return refuse("simulation-failed", "The pool would deliver nothing for this size.");
+    const mismatch = v4.quoterDisagrees(out, quoted);
+    if (mismatch) return refuse("quote-mismatch", mismatch);
+    if (quoted === null) warnings.push({ code: "quoter-unavailable", text: "clank.trade's V4 Quoter did not answer, so this quote is the router's simulated fill alone." });
     const minOut = minOutOf(out, slip);
     const swap = v4.routerCall({ data: v4.buildBuy(pool.key, amountIn, minOut, deadline), value: amountIn });
     const lpFee = BigInt(pool.lpFee);
@@ -336,8 +343,10 @@ export async function prepareBuy(body: Record<string, unknown>): Promise<Prepare
 
   // ---- curve -------------------------------------------------------------
   if (!q) return refuse("simulation-failed", "The curve would not quote this buy.");
-  const [, , feeWei, expected, snipeTaxWei] = q;
-  const minOut = minOutOf(expected, slip);
+  // (grossUsed, netIn, fee, tokensOut, refund): the fifth word is a refund, not a
+  // snipe tax, and the minimum is scaled to what the curve uses (V4R D5).
+  const [usedWei, , feeWei, expected, refundWei] = q;
+  const minOut = minOutForBuy(expected, slip, amountIn, usedWei);
   const swap = curveBuyCall({ curve, amountIn, minOut, recipient: from });
   const plan = shell("buy", "curve", input, symbol);
 
@@ -347,15 +356,15 @@ export async function prepareBuy(body: Record<string, unknown>): Promise<Prepare
   const out = received(sim[0]!, token, from);
   if (out < minOut) return refuse("simulation-failed", `The buy would deliver ${out}, under the minimum of ${minOut}.`);
 
-  if (snipeTaxWei > 0n) {
-    warnings.push({ code: "snipe-tax", text: `This wallet pays a snipe tax of ${snipeTaxWei} wei on this buy.` });
+  if (refundWei > 0n) {
+    warnings.push({ code: "finishes-curve", text: `This buy finishes the curve: it uses ${usedWei} of the ${amountIn} wei, and ${refundWei} comes back.` });
   }
   const progressPct = fresh.threshold > 0n ? (Number(fresh.realQuote) / Number(fresh.threshold)) * 100 : 0;
   if (progressPct >= NEAR_GRADUATION_PCT) {
     warnings.push({ code: "near-graduation", text: `The curve is ${progressPct.toFixed(0)}% of the way to graduating to Uniswap V4.` });
   }
   const spot = fresh.quoteReserve > 0n
-    ? Number(amountIn - feeWei - snipeTaxWei) * Number(fresh.tokenReserve) / Number(fresh.quoteReserve) : 0;
+    ? Number(usedWei - feeWei) * Number(fresh.tokenReserve) / Number(fresh.quoteReserve) : 0;
   const priceImpactBps = impactBps(expected, spot);
   if (priceImpactBps > PRICE_IMPACT_WARN_BPS) {
     warnings.push({ code: "price-impact", text: `This buy moves the curve price about ${(priceImpactBps / 100).toFixed(1)}%.` });
@@ -367,8 +376,9 @@ export async function prepareBuy(body: Record<string, unknown>): Promise<Prepare
       ...plan,
       quote: {
         amountIn: amountIn.toString(), expectedOut: expected.toString(), minOut: minOut.toString(),
-        feeWei: feeWei.toString(), snipeTaxWei: snipeTaxWei.toString(),
+        feeWei: feeWei.toString(), snipeTaxWei: "0",
         slippageBps: slip, priceImpactBps,
+        ...(refundWei > 0n ? { usedWei: usedWei.toString(), refundWei: refundWei.toString() } : {}),
       },
       steps: [step("swap", "curve-buy", swap, sim[0], "Buy on the bonding curve")],
       warnings,
@@ -411,6 +421,7 @@ export async function prepareSell(body: Record<string, unknown>): Promise<Prepar
   ]);
   if (wired instanceof NotAuthentic) return refuse("not-authentic", "This is not a token launched by the clank.trade factory.");
   if (wired instanceof Error) throw wired;
+  if (BigInt(wired.pairToken) !== 0n) return refuse("unsupported-pair", new v4.UnsupportedPair(wired.pairToken).message);
   const { curve, symbol } = wired;
 
   if (balance === 0n) return refuse("no-balance", "This wallet holds none of this token.");
@@ -454,11 +465,17 @@ export async function prepareSell(body: Record<string, unknown>): Promise<Prepar
 
     const probe = v4.routerCall({ data: v4.buildSell(pool.key, tokens, 0n, deadline), value: 0n });
     const labels = [...approvals.map((a) => a.label), "the swap"];
-    const sim = await simulate(from, [...approvals.map((a) => a.call), probe]);
+    const [sim, quoted] = await Promise.all([
+      simulate(from, [...approvals.map((a) => a.call), probe]),
+      v4.quoterOut(pool.key, false, tokens),
+    ]);
     const why = failure(sim, labels);
     if (why) return refuse("simulation-failed", why);
     const out = received(sim[sim.length - 1]!, NATIVE_LOG, from);
     if (out === 0n) return refuse("simulation-failed", "The pool would pay nothing for this size.");
+    const mismatch = v4.quoterDisagrees(out, quoted);
+    if (mismatch) return refuse("quote-mismatch", mismatch);
+    if (quoted === null) warnings.push({ code: "quoter-unavailable", text: "clank.trade's V4 Quoter did not answer, so this quote is the router's simulated fill alone." });
     const minOut = minOutOf(out, slip);
     const swap = v4.routerCall({ data: v4.buildSell(pool.key, tokens, minOut, deadline), value: 0n });
     const lpFee = BigInt(pool.lpFee);

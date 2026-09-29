@@ -160,14 +160,17 @@ async function routerSwap(args, value, d, data) {
   const fee = uintAt(swap, at + 64, 24), tickSpacing = int24At(swap, at + 96), hooks = addressAt(swap, at + 128);
   const zeroForOne = boolAt(swap, at + 160);
   const amountIn = uintAt(swap, at + 192, 128), amountOutMinimum = uintAt(swap, at + 224, 128);
-  const hookData = bytesAt(swap, at + 256, at);
+  // Robinhood's router reads a minHopPriceX36 before the hook data (V4R).
+  const minHopPriceX36 = uintAt(swap, at + 256);
+  const hookData = bytesAt(swap, at + 288, at);
   canonical(swap, encTuple([{
     tail: encTuple([
-      { head: [currency0, currency1, fee, tickSpacing, hooks, zeroForOne ? 1n : 0n, amountIn, amountOutMinimum].map(word).join("") },
+      { head: [currency0, currency1, fee, tickSpacing, hooks, zeroForOne ? 1n : 0n, amountIn, amountOutMinimum, minHopPriceX36].map(word).join("") },
       { tail: encBytes(hookData) },
     ]),
   }]), "The swap parameters");
   if (!same(currency0, NATIVE)) refuse("the swap's pool does not trade ETH");
+  if (minHopPriceX36 !== 0n) refuse("the swap sets a per-hop price floor, which cumTrade never sends");
   if (hookData !== "") refuse("the swap passes data to the pool's hook");
   const [paid, received] = zeroForOne ? [NATIVE, currency1] : [currency1, NATIVE];
   const settleCurrency = addressAt(settle, 0), settleAmount = uintAt(settle, 32);

@@ -18,6 +18,7 @@ export const API_LIMITS = {
 
 /** The fields of a board row: `/api/launches`, and `/events`' `snapshot` and `row`. */
 export const ROW_FIELDS = /** @type {Field[]} */ ([
+  { name: "pairToken", what: "The ERC-20 the curve trades against, or null for native ETH. cumTrade trades ETH-paired launches only." },
   { name: "token", what: "The token's address." },
   { name: "curve", what: "Its bonding curve's address." },
   { name: "creator", what: "The address that launched it." },

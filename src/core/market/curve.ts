@@ -40,7 +40,24 @@ export const clampSlippage = (bps: number) =>
 export const minOutOf = (expected: bigint, slippageBps: number) =>
   (expected * BigInt(10_000 - slippageBps)) / 10_000n;
 
-export type CurveBuyQuote = { expected: bigint; feeWei: bigint; snipeTaxWei: bigint };
+/**
+ * A curve buy's quote. `usedWei` is how much of the input the curve takes and
+ * `refundWei` what comes back: a buy that finishes the curve may use only part
+ * of what it offers (developer.clank.trade, Trade on the bonding curve; V4R D5).
+ */
+export type CurveBuyQuote = { expected: bigint; feeWei: bigint; snipeTaxWei: bigint; usedWei: bigint; refundWei: bigint };
+
+/**
+ * The minimum to send with a buy that may use only `used` of `requested`
+ * (V4R D5). The curve checks the minimum in proportion to what it uses, so a
+ * partial fill would weaken the slippage asked for; it is scaled up by
+ * requested / used, rounding up, as clank.trade's docs do.
+ */
+export function minOutForBuy(expected: bigint, slippageBps: number, requested: bigint, used: bigint): bigint {
+  const min = minOutOf(expected, slippageBps);
+  if (used <= 0n || used >= requested) return min;
+  return (min * requested + used - 1n) / used;
+}
 
 /**
  * What a buy of `amountIn` returns, from the curve's own quote.
@@ -51,7 +68,7 @@ export type CurveBuyQuote = { expected: bigint; feeWei: bigint; snipeTaxWei: big
  */
 export async function quoteCurveBuy(curve: Address, amountIn: bigint, buyer?: Address): Promise<CurveBuyQuote> {
   if (VENUE.curve.quotes === "simulated") return simulatedCurveBuy(curve, amountIn, buyer);
-  // (amountIn, amountInAfterFee, fee, tokensOut, snipeTax)
+  // (grossUsed, netIn, fee, tokensOut, refund): a snipe tax is inside the fee.
   const q = buyer
     ? await client.readContract({
         address: curve, abi: curveAbi, functionName: "quoteBuyFor", args: [buyer, amountIn],
@@ -59,7 +76,7 @@ export async function quoteCurveBuy(curve: Address, amountIn: bigint, buyer?: Ad
     : await client.readContract({
         address: curve, abi: curveAbi, functionName: "quoteBuy", args: [amountIn],
       });
-  return { expected: q[3], feeWei: q[2], snipeTaxWei: q[4] };
+  return { expected: q[3], feeWei: q[2], snipeTaxWei: 0n, usedWei: q[0], refundWei: q[4] };
 }
 
 /**
@@ -145,7 +162,7 @@ async function simulatedCurveBuy(curve: Address, amountIn: bigint, buyer?: Addre
     abi: tokenAbi, functionName: "balanceOf", data: calls[1].returnData,
   }) as bigint;
   const feeWei = (amountIn * feeBps) / 10_000n;
-  return { expected, feeWei, snipeTaxWei: taxBps > 0n ? (amountIn * taxBps) / 10_000n : 0n };
+  return { expected, feeWei, snipeTaxWei: taxBps > 0n ? (amountIn * taxBps) / 10_000n : 0n, usedWei: amountIn, refundWei: 0n };
 }
 
 export type CurveSellQuote = { expected: bigint; feeWei: bigint; feeBps: number };

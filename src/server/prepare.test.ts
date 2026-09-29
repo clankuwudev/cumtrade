@@ -47,6 +47,8 @@ const FAKE = A("70e5"), FAKE_CURVE = A("c0e5");           // wired to another fa
 const IMPOSTOR = A("70f6"), IMPOSTOR_CURVE = A("c0f6");   // claims the real factory, but it never launched them
 const SECONDS = A("70a7"), SECONDS_CURVE = A("c0a7");     // launched by clank.trade's second factory (B1.5)
 const CROSSED = A("70a8"), CROSSED_CURVE = A("c0a8");     // registered by the first factory, its curve names the second
+const PAIRED = A("70a9"), PAIRED_CURVE = A("c0a9");       // launched against an ERC-20 pair, not native ETH (V4R D3)
+const PAIR_ERC20 = A("e20c0");
 const ROUTER = getAddress(process.env.UNIVERSAL_ROUTER!);
 const PERMIT2 = getAddress(process.env.PERMIT2!);
 const POOL_MANAGER = A("9a1"), HOOK = A("400b");
@@ -59,7 +61,7 @@ const E18 = 10n ** 18n;
 
 const curveOf: Record<string, Address> = {
   [TOKEN]: CURVE, [BONDED]: BONDED_CURVE, [MOVED]: MOVED_CURVE, [OFFBOARD]: OFFBOARD_CURVE, [FAKE]: FAKE_CURVE,
-  [IMPOSTOR]: IMPOSTOR_CURVE, [SECONDS]: SECONDS_CURVE, [CROSSED]: CROSSED_CURVE,
+  [IMPOSTOR]: IMPOSTOR_CURVE, [SECONDS]: SECONDS_CURVE, [CROSSED]: CROSSED_CURVE, [PAIRED]: PAIRED_CURVE,
 };
 const tokenOf = Object.fromEntries(Object.entries(curveOf).map(([t, c]) => [c, t as Address]));
 
@@ -72,14 +74,18 @@ const defaults = () => ({
   permit2Expiration: 0,
   graduated: new Set<string>([BONDED_CURVE, MOVED_CURVE]),
   realQuote: 3n * 10n ** 17n,
-  snipeTax: 0n,
+  /** What a buy that finishes the curve gets back: quoteBuyFor's fifth word (V4R D5). */
+  refund: 0n,
   /** Index of the simulated call that reverts, if any. */
   revertAt: null as number | null,
+  /** clank.trade's V4 Quoter: agreeing with the fill, 10% off it, or not answering (V4R D4). */
+  quoter: "agree" as "agree" | "off" | "down",
 });
 let chain = defaults();
 
 const extraAbi = parseAbi([
   "function extsload(bytes32 slot) view returns (bytes32)",
+  "function quoteExactInputSingle(((address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) poolKey, bool zeroForOne, uint128 exactAmount, bytes hookData) params) returns (uint256 amountOut, uint256 gasEstimate)",
   "function allowance(address owner, address token, address spender) view returns (uint160 amount, uint48 expiration, uint48 nonce)",
 ]);
 const bySelector = new Map<Hex, AbiFunction>();
@@ -122,9 +128,14 @@ function read(to: Address, data: Hex): Hex {
     const asked = getAddress(args[0] as string);
     const registrar = asked === SECONDS ? SECOND_FACTORY : FIRST_FACTORY;
     const listed = t === registrar && asked !== FAKE && asked !== IMPOSTOR && curveOf[asked];
+    // token, curve, deployer, fee recipient, pairToken (0: native ETH),
+    // graduation threshold, poolFee 3000, tickSpacing 200, creator tax,
+    // buyback, phase, three swept words, exists: the layout clank.trade's
+    // developer docs give (V4R).
     return `0x${listed
-      ? word(asked) + word(curveOf[asked]!) + word(0).repeat(9) + word(1)
-      : word(0).repeat(12)}` as Hex;
+      ? word(asked) + word(curveOf[asked]!) + word(0).repeat(2) + word(asked === PAIRED ? PAIR_ERC20 : 0) + word(42_764n * 10n ** 14n)
+        + word(3000) + word(200) + word(0).repeat(6) + word(1)
+      : word(0).repeat(15)}` as Hex;
   }
   const result = ((): unknown => {
     switch (fn.name) {
@@ -150,11 +161,21 @@ function read(to: Address, data: Hex): Hex {
       case "quoteBuyFor": {
         if (chain.graduated.has(t)) throw new Error("revert: graduated");
         const amountIn = args[1] as bigint;
-        return [amountIn, (amountIn * 99n) / 100n, amountIn / 100n, buyOut(amountIn), chain.snipeTax];
+        // (grossUsed, netIn, fee, tokensOut, refund), as clank.trade's docs name them (V4R D5).
+        const used = amountIn - chain.refund;
+        return [used, (used * 99n) / 100n, used / 100n, buyOut(used), chain.refund];
       }
       case "poolManager": return POOL_MANAGER;
       case "memeHook": return HOOK;
       case "extsload": return toHex((1n << 96n) | (3000n << 208n), { size: 32 });
+      // clank.trade's V4 Quoter (V4R D4): by default it agrees with the
+      // simulated fill below; a test can make it disagree, or fail.
+      case "quoteExactInputSingle": {
+        const p = args[0] as { zeroForOne: boolean; exactAmount: bigint };
+        if (chain.quoter === "down") throw new Error("revert: the Quoter is down");
+        const fill = p.zeroForOne ? buyOut(p.exactAmount) : 5n * 10n ** 17n;
+        return [chain.quoter === "off" ? (fill * 110n) / 100n : fill, 100_000n];
+      }
     }
     throw new Error(`unanswered read ${fn.name}`);
   })();
@@ -382,7 +403,9 @@ const keep = (name: string, intent: Record<string, unknown>, plan: Plan) => fixt
     checkSteps(out.body, { side: "sell", amount: tokens, token: BONDED });
     keep("v4 sell with both approvals", { side: "sell", from: FROM, token: BONDED, tokens: tokens.toString(), slippageBps: 500 }, out.body);
   }
-  ok("costs one eth_call and one simulation once the pool wiring is cached", used.eth_call === 1 && used.eth_simulateV1 === 1, JSON.stringify(used));
+  // The second eth_call is clank.trade's V4 Quoter, read alongside the simulation, not after it (V4R D4).
+  ok("costs one eth_call and one simulation once the pool wiring is cached, and the Quoter's read beside it",
+    used.eth_call === 2 && used.eth_simulateV1 === 1, JSON.stringify(used));
 }
 
 {
@@ -409,8 +432,29 @@ const keep = (name: string, intent: Record<string, unknown>, plan: Plan) => fixt
     ok("fee is the pool's 0.3% of the ETH in", out.body.quote.feeWei === ((amount * 3000n) / 1_000_000n).toString());
     checkSteps(out.body, { side: "buy", amount, token: BONDED });
     keep("v4 buy", { side: "buy", from: FROM, token: BONDED, amountIn: amount.toString(), slippageBps: 500 }, out.body);
+    ok("the Quoter agreed, so no warning about it", !out.body.warnings.some((w) => w.code === "quoter-unavailable"));
   }
-  ok("costs one eth_call and one simulation", used.eth_call === 1 && used.eth_simulateV1 === 1, JSON.stringify(used));
+  // The second eth_call is clank.trade's V4 Quoter, read alongside the simulation (V4R D4).
+  ok("costs one eth_call and one simulation, and the Quoter's read beside it", used.eth_call === 2 && used.eth_simulateV1 === 1, JSON.stringify(used));
+}
+
+// clank.trade's V4 Quoter disagreeing with the simulated fill refuses the plan;
+// a Quoter that does not answer only warns, so a quote never strands a sell (V4R D4).
+for (const side of ["buy", "sell"] as const) {
+  const call = () => side === "buy"
+    ? prepareBuy({ from: FROM, token: BONDED, amountEth: "0.01", slippageBps: 500 })
+    : prepareSell({ from: FROM, token: BONDED, tokens: (10n ** 24n).toString(), slippageBps: 500 });
+  chain = defaults();
+  chain.quoter = "off";
+  const off = await run(`V4 ${side}, the Quoter 10% off the simulated fill`, call);
+  const body = off.out.body as { code?: string; text?: string };
+  ok(`422 quote-mismatch on a ${side}`, off.out.status === 422 && body.code === "quote-mismatch"
+    && !!body.text?.includes("V4 Quoter"), JSON.stringify(off.out.body).slice(0, 200));
+  chain = defaults();
+  chain.quoter = "down";
+  const down = await run(`V4 ${side}, the Quoter not answering`, call);
+  ok(`200 on a ${side}, with a quoter-unavailable warning`, down.out.status === 200
+    && down.out.body.warnings.some((w) => w.code === "quoter-unavailable"), JSON.stringify(down.out.body).slice(0, 200));
 }
 
 {
@@ -486,6 +530,17 @@ const keep = (name: string, intent: Record<string, unknown>, plan: Plan) => fixt
     out.status === 200 ? out.body.steps.at(-1)!.to : "");
 }
 
+for (const [side, call] of [
+  ["buy", () => prepareBuy({ from: FROM, token: PAIRED, amountEth: "0.01" })],
+  ["sell", () => prepareSell({ from: FROM, token: PAIRED, tokens: "1000000000000000000" })],
+] as const) {
+  chain = defaults();
+  const { out } = await run(`a ${side} of a launch paired with an ERC-20 (V4R D3)`, call);
+  const body = out.body as { code?: string; text?: string };
+  ok(`422 unsupported-pair on a ${side}, naming the pair token`, out.status === 422 && body.code === "unsupported-pair"
+    && !!body.text?.includes(PAIR_ERC20) && !!body.text?.includes("ETH-paired launches only"), JSON.stringify(out.body));
+}
+
 {
   chain = defaults();
   const { out } = await run("a curve naming the second factory for a token only the first listed", () => prepareBuy({ from: FROM, token: CROSSED, amountEth: "0.01" }));
@@ -493,12 +548,21 @@ const keep = (name: string, intent: Record<string, unknown>, plan: Plan) => fixt
 }
 
 {
-  chain = { ...defaults(), snipeTax: 10n ** 14n, realQuote: 41n * 10n ** 17n };
+  // A buy that finishes the curve: 0.004 of its 0.01 ETH comes back (V4R D5).
+  chain = { ...defaults(), refund: 4n * 10n ** 15n, realQuote: 41n * 10n ** 17n };
   row(TOKEN, CURVE, { sellable: false, band: "AVOID" });
-  const { out } = await run("warnings on a risky buy", () => prepareBuy({ from: FROM, token: TOKEN, amountEth: "0.01" }));
+  const { out } = await run("warnings on a risky buy that finishes the curve", () => prepareBuy({ from: FROM, token: TOKEN, amountEth: "0.01", slippageBps: 500 }));
   row(TOKEN, CURVE);
   const codes = out.status === 200 ? out.body.warnings.map((w) => w.code).sort().join(",") : "";
-  ok("band-avoid, near-graduation, sell-sim-failed and snipe-tax", codes === "band-avoid,near-graduation,sell-sim-failed,snipe-tax", codes);
+  ok("band-avoid, finishes-curve, near-graduation and sell-sim-failed", codes === "band-avoid,finishes-curve,near-graduation,sell-sim-failed", codes);
+  if (out.status === 200) {
+    const q = out.body.quote;
+    const amountIn = 10n ** 16n, used = amountIn - 4n * 10n ** 15n;
+    const base = (BigInt(q.expectedOut) * 9_500n) / 10_000n;
+    ok("the quote says what the curve uses and what comes back", q.usedWei === used.toString() && q.refundWei === (4n * 10n ** 15n).toString());
+    ok("…and its minimum is scaled up by sent / used, rounding up", q.minOut === ((base * amountIn + used - 1n) / used).toString(), `${q.minOut}`);
+    ok("…and no snipe tax is booked from the refund", q.snipeTaxWei === "0");
+  }
 }
 
 {

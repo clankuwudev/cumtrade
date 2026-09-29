@@ -11,6 +11,7 @@
     { "value": "0xb45beb38f21be1d29e6b9c6e9dc4222d1c12f1f1", "why": "clank.trade's LaunchFactory (src/core/chain.ts)." },
     { "value": "0x798daaa0707c1e538bb5acf0867ac0e1a84cccf2", "why": "clank.trade's second LaunchFactory, launching since 2026-09-22 (src/core/chain.ts, B1.5)." },
     { "value": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e", "why": "The Pons LaunchFactory (src/core/chain.ts)." },
+    { "value": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94", "why": "clank.trade's V4 Quoter on Robinhood Chain (developer.clank.trade, Contracts), which cross-checks every graduated quote (src/core/market/v4.ts, V4R D4)." },
     { "value": "0xca11bde05977b3631167028862be2a173976ca11", "why": "Multicall3, at its address on every chain." },
     { "value": "0x8366a39cc670b4001a1121b8f6a443a643e40951", "why": "Robinhood Chain's Uniswap V4 PoolManager, as the factory reports it." },
     { "value": "0xd405e0dff2d0cc7eaa48b3aec2e3f2456c072000", "why": "The factory's memeHook, which makes the canonical V4 pool." },
@@ -44,7 +45,7 @@
   "files": [
     { "path": "src/web/public/favicon-32.png", "sha256": "b04b5c73a51f0f6608a0d134d441ca08b4803644b354570ba5a19d61b0dae3f3", "why": "The browser tab's icon: the mascot's face, cropped from her avatar (the user chose it, 2026-09-22, over the plan's Q6 rule, since the art carries clank.trade's marks)." },
     { "path": "src/web/public/apple-touch-icon.png", "sha256": "a39070d9c85c1e61d2d5a74214ac9e31986b445a2c08d33d45ab93ea672df0d0", "why": "The phone home screen's icon and the sidebar's mark: the same crop at 180px." },
-    { "path": "src/web/public/vendor/wallet.js.sha256", "sha256": "be95e444be6b1e87368705589db1ae436d7390a69e16412131dfdd246ddb398a", "why": "The hash of the trading wallet's SDK bundle, published so a clone's build can be compared with what we serve. An SDK upgrade changes it and must be reviewed again." },
+    { "path": "src/web/public/vendor/wallet.js.sha256", "sha256": "997da761b664172fc21c9c79e44a0d8307991f8ea2d98fb5585b54d97332644a", "why": "The hash of the trading wallet's SDK bundle, published so a clone's build can be compared with what we serve. An SDK upgrade changes it and must be reviewed again." },
     { "path": "src/web/public/vendor/charts.js.sha256", "sha256": "0c809828c95e8ad39c19539c382ccd3d5624ff8b82ddcdfbde9917d16cbe2e56", "why": "The hash of the token page's chart bundle (TradingView Lightweight Charts, TV0), published so a clone's build can be compared with what we serve. A library upgrade changes it and must be reviewed again." },
     { "path": "src/core/positions/fixtures/ledger-direct.json", "sha256": "5e4bf722f44345fdad4a2f43cfe80d21f9ff826d324f45153f75b626afec708d", "why": "Chain answers for a third party that trades curves directly (B3.2), recorded read-only by scripts/record-ledger-fixture.mts." },
     { "path": "src/core/positions/fixtures/ledger-foreign.json", "sha256": "036383aa459d7f01c0d3ed559e1d425919f981d3b31f2e95f64707a3e580d1d7", "why": "Chain answers for a third party whose buys a router made (B3.2)." },

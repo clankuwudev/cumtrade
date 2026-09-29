@@ -147,9 +147,12 @@ export function evaluate(a: Analysis, d: Derived): Finding[] {
     push(snipe >= 2000 ? "high" : "medium", "Anti-snipe tax is active",
       `snipeTaxStartBps = ${snipe} (${(snipe / 100).toFixed(2)}%) decaying to 0 over ${a.snipeSecs}s after launch. Early buys are taxed.`);
   }
+  // Paired with an ERC-20 rather than native ETH (V4R D3). The factory allows
+  // approved pair tokens; cumTrade declines them until the user switches pair
+  // tokens on, so the finding says exactly that.
   if (!a.isNative) {
-    push("medium", "Non-native quote asset",
-      `Curve quotes in ${a.pairToken} rather than native ETH — verify that token separately.`);
+    push("high", "Paired with an ERC-20",
+      `Paired with an ERC-20 (${a.pairToken}): cumTrade trades ETH-paired launches only.`);
   }
   // Likewise: a graduated curve reports a non-trading state because it has
   // settled, which is the intended end state rather than a warning sign.

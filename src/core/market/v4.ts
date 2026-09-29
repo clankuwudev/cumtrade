@@ -171,6 +171,46 @@ async function readState(poolManager: Address, key: PoolKey): Promise<PoolState 
   };
 }
 
+/**
+ * What a launch trades against, and the pool it graduates into: its factory's
+ * own record (`getLaunchedToken`), as clank.trade's developer docs build the
+ * pool key (V4R D2). Immutable once launched, so read once per token.
+ */
+export type LaunchRecord = { pairToken: Address; poolFee: number; tickSpacing: number };
+const recordCache = new Map<string, Promise<LaunchRecord | null>>();
+
+export function launchRecord(token: Address): Promise<LaunchRecord | null> {
+  const key = token.toLowerCase();
+  let hit = recordCache.get(key);
+  if (!hit) {
+    hit = (async () => {
+      const factory = await factoryOf(token);
+      if (!factory) return null;
+      const r = await client.readContract({
+        address: factory.address as Address, abi: factoryAbi, functionName: "getLaunchedToken", args: [token],
+      });
+      // An address the factory never launched reads as zeros, not a revert.
+      if (!r[14] || r[0].toLowerCase() !== key) return null;
+      return { pairToken: r[4], poolFee: r[6], tickSpacing: r[7] };
+    })();
+    hit.catch(() => recordCache.delete(key));
+    recordCache.set(key, hit);
+  }
+  return hit;
+}
+
+/**
+ * A launch paired with an ERC-20 rather than native ETH (V4R D3). The factory
+ * supports them; cumTrade trades them only once the user switches pair tokens
+ * on (phase 2), and until then declines them, with this reason, everywhere.
+ */
+export class UnsupportedPair extends Error {
+  constructor(readonly pairToken: Address) {
+    super(`Paired with an ERC-20 (${pairToken}): cumTrade trades ETH-paired launches only.`);
+    this.name = "UnsupportedPair";
+  }
+}
+
 /** Pool keys the chain index has seen for a token (D1.3), set by chainIndex.ts. */
 type IndexedPools = (token: string) => { fee: number; tickSpacing: number; hooks: string; currency0: string; currency1: string }[];
 let indexedPools: IndexedPools = () => [];
@@ -197,14 +237,25 @@ export function useIndexedPools(fn: IndexedPools) {
 export async function poolFor(token: Address): Promise<PoolState | null> {
   const factory = await factoryOf(token);
   if (!factory) return null;
-  const { poolManager, hook } = await wiring(factory);
+  const [{ poolManager, hook }, record] = await Promise.all([wiring(factory), launchRecord(token)]);
+  // The pair, fee and tick spacing are the launch's own (V4R D2). A token its
+  // factory has no record of has no canonical pool.
+  if (!record) return null;
+  if (record.pairToken.toLowerCase() !== NATIVE) throw new UnsupportedPair(record.pairToken);
   const t = token.toLowerCase();
+  // Currencies sort by address; native ETH is zero, so it is always currency0.
+  const key: PoolKey = {
+    currency0: NATIVE, currency1: token,
+    fee: record.poolFee || GRAD_FEE, tickSpacing: record.tickSpacing || GRAD_TICK_SPACING, hooks: hook,
+  };
+  // The pool the chain index saw the factory initialise must be this one.
   const known = indexedPools(t).find((k) =>
     k.hooks.toLowerCase() === hook.toLowerCase() && k.currency0.toLowerCase() === NATIVE && k.currency1.toLowerCase() === t);
-  return readState(poolManager, {
-    currency0: NATIVE, currency1: token,
-    fee: known?.fee ?? GRAD_FEE, tickSpacing: known?.tickSpacing ?? GRAD_TICK_SPACING, hooks: hook,
-  });
+  if (known && (known.fee !== key.fee || known.tickSpacing !== key.tickSpacing)) {
+    throw new Error(`the indexed pool (fee ${known.fee}, spacing ${known.tickSpacing}) is not the factory's record `
+      + `(fee ${key.fee}, spacing ${key.tickSpacing})`);
+  }
+  return readState(poolManager, key);
 }
 
 // --- swap encoding ---------------------------------------------------------
@@ -214,6 +265,14 @@ const V4_SWAP = 0x10;
 /** v4-periphery Actions. */
 const SWAP_EXACT_IN_SINGLE = 0x06, SETTLE_ALL = 0x0c, TAKE_ALL = 0x0f;
 
+/**
+ * Robinhood's Universal Router reads the exact-input-single tuple with a
+ * `minHopPriceX36` before `hookData` (developer.clank.trade, Trade after
+ * graduation; V4R). The generic V4 tuple, without it, is read shifted by one
+ * word: it only ever worked because native ETH is currency0 and its zero
+ * address made the misread hook data empty. It is 0 here, as in the docs;
+ * `amountOutMinimum` is the trade's protection (V4R D1).
+ */
 const exactInSingleComponents = [{
   type: "tuple",
   components: [
@@ -221,9 +280,12 @@ const exactInSingleComponents = [{
     { type: "bool" },     // zeroForOne
     { type: "uint128" },  // amountIn
     { type: "uint128" },  // amountOutMinimum
+    { type: "uint256" },  // minHopPriceX36
     { type: "bytes" },    // hookData
   ],
 }] as const;
+/** No per-hop price floor (V4R D1). */
+export const MIN_HOP_PRICE_X36 = 0n;
 
 /**
  * Calldata for selling `amountIn` of the token into the pool for native ETH.
@@ -242,7 +304,7 @@ export function buildSell(key: PoolKey, amountIn: bigint, minOut: bigint, deadli
 
   const swapParam = encodeAbiParameters(exactInSingleComponents, [[
     [key.currency0, key.currency1, key.fee, key.tickSpacing, key.hooks],
-    false, amountIn, minOut, "0x",
+    false, amountIn, minOut, MIN_HOP_PRICE_X36, "0x",
   ]] as never);
 
   const settle = encodeAbiParameters(
@@ -278,7 +340,7 @@ export function buildBuy(key: PoolKey, amountIn: bigint, minOut: bigint, deadlin
 
   const swapParam = encodeAbiParameters(exactInSingleComponents, [[
     [key.currency0, key.currency1, key.fee, key.tickSpacing, key.hooks],
-    true, amountIn, minOut, "0x",
+    true, amountIn, minOut, MIN_HOP_PRICE_X36, "0x",
   ]] as never);
 
   const settle = encodeAbiParameters(
@@ -376,6 +438,49 @@ export async function approvalsReady(owner: Address, token: Address, amount: big
   }
 }
 
+// --- the official Quoter ---------------------------------------------------
+
+/**
+ * clank.trade's V4 Quoter on Robinhood Chain (developer.clank.trade, Contracts;
+ * V4R D4). It answers an exact-input quote through eth_call. It cross-checks
+ * the router simulation below, which stays the quote: the simulation is the
+ * real fill, through the very calldata that will be sent.
+ */
+export const V4_QUOTER = getAddress(
+  process.env.V4_QUOTER ?? "0x8dc178efb8111bb0973dd9d722ebeff267c98f94");
+/** How far the simulated fill and the Quoter may differ: the page's own quote tolerance, 1%. */
+export const QUOTER_TOLERANCE_BPS = 100n;
+
+const quoterAbi = parseAbi([
+  "function quoteExactInputSingle(((address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) poolKey, bool zeroForOne, uint128 exactAmount, bytes hookData) params) returns (uint256 amountOut, uint256 gasEstimate)",
+]);
+
+/** The Quoter's output for this swap, or null when it does not answer. */
+export async function quoterOut(key: PoolKey, zeroForOne: boolean, amountIn: bigint): Promise<bigint | null> {
+  try {
+    const { result } = await client.simulateContract({
+      address: V4_QUOTER, abi: quoterAbi, functionName: "quoteExactInputSingle",
+      args: [{ poolKey: key, zeroForOne, exactAmount: amountIn, hookData: "0x" }],
+    });
+    return result[0];
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Why a simulated fill cannot be trusted against the Quoter, or null. A Quoter
+ * that did not answer is not a disagreement: a quote must never be what
+ * strands a position someone is trying to leave, so the caller warns instead.
+ */
+export function quoterDisagrees(simOut: bigint, quoted: bigint | null): string | null {
+  if (quoted === null || quoted === 0n) return null;
+  const diff = simOut > quoted ? simOut - quoted : quoted - simOut;
+  if (diff * 10_000n <= quoted * QUOTER_TOLERANCE_BPS) return null;
+  return `The router's simulated fill (${simOut}) and clank.trade's V4 Quoter (${quoted}) differ by more than `
+    + `${Number(QUOTER_TOLERANCE_BPS) / 100}%, so neither is trusted.`;
+}
+
 // --- quoting ---------------------------------------------------------------
 
 /** traceTransfers reports native ETH movements against this pseudo-address. */
@@ -420,11 +525,11 @@ export type Quote =
 /**
  * Quote a sell by simulating the transaction that would actually be sent.
  *
- * No V4 Quoter is deployed on this chain, and reimplementing V4's tick maths in
- * TypeScript to predict a fill is a second implementation that would be wrong
- * in exactly the cases that matter — a thin pool, a large size, a tick
- * boundary. `eth_simulateV1` runs the real router against real state, so what
- * comes back is the fill: fees, price impact and all.
+ * Reimplementing V4's tick maths in TypeScript to predict a fill would be a
+ * second implementation, wrong in exactly the cases that matter: a thin pool,
+ * a large size, a tick boundary. `eth_simulateV1` runs the real router against
+ * real state, so what comes back is the fill, fees and price impact included.
+ * clank.trade's V4 Quoter, read alongside, must agree (V4R D4).
  *
  * The approvals are included in the simulated sequence so the number does not
  * depend on whether they happen to be in place yet.
@@ -437,19 +542,22 @@ export async function quoteSell(owner: Address, token: Address, amountIn: bigint
 
   const approvals = approvalCalls(token, amountIn)
     .map((c) => ({ from: owner, to: c.to, value: "0x0", data: c.data }));
-  const seq = await simulate(owner, [
-    ...approvals,
-    { from: owner, to: UNIVERSAL_ROUTER, value: "0x0", data: buildSell(pool.key, amountIn, 0n, deadline()) },
+  const [seq, quoted] = await Promise.all([
+    simulate(owner, [
+      ...approvals,
+      { from: owner, to: UNIVERSAL_ROUTER, value: "0x0", data: buildSell(pool.key, amountIn, 0n, deadline()) },
+    ]),
+    quoterOut(pool.key, false, amountIn),
   ]);
 
   const swap = seq[seq.length - 1];
   if (!swap || swap.status !== "0x1") {
     return { ok: false, pool, error: swap?.error?.message ?? "the swap reverted in simulation" };
   }
-  return {
-    ok: true, pool, out: moved(swap, NATIVE_LOG, owner, true),
-    approvalsNeeded: !(await approvalsReady(owner, token, amountIn)),
-  };
+  const out = moved(swap, NATIVE_LOG, owner, true);
+  const mismatch = quoterDisagrees(out, quoted);
+  if (mismatch) return { ok: false, pool, error: mismatch };
+  return { ok: true, pool, out, approvalsNeeded: !(await approvalsReady(owner, token, amountIn)) };
 }
 
 /** Quote a buy the same way. ETH in, tokens out. */
@@ -458,15 +566,21 @@ export async function quoteBuy(owner: Address, token: Address, ethIn: bigint): P
   if (!pool) return { ok: false, error: "no canonical V4 pool for this token", pool: null };
   if (pool.liquidity === 0n) return { ok: false, error: "the V4 pool has no liquidity", pool };
 
-  const seq = await simulate(owner, [{
-    from: owner, to: UNIVERSAL_ROUTER, value: `0x${ethIn.toString(16)}`,
-    data: buildBuy(pool.key, ethIn, 0n, deadline()),
-  }]);
+  const [seq, quoted] = await Promise.all([
+    simulate(owner, [{
+      from: owner, to: UNIVERSAL_ROUTER, value: `0x${ethIn.toString(16)}`,
+      data: buildBuy(pool.key, ethIn, 0n, deadline()),
+    }]),
+    quoterOut(pool.key, true, ethIn),
+  ]);
   const swap = seq[0];
   if (!swap || swap.status !== "0x1") {
     return { ok: false, pool, error: swap?.error?.message ?? "the swap reverted in simulation" };
   }
-  return { ok: true, pool, out: moved(swap, token, owner, true), approvalsNeeded: false };
+  const out = moved(swap, token, owner, true);
+  const mismatch = quoterDisagrees(out, quoted);
+  if (mismatch) return { ok: false, pool, error: mismatch };
+  return { ok: true, pool, out, approvalsNeeded: false };
 }
 
 /**

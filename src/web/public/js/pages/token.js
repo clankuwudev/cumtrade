@@ -1011,6 +1011,16 @@ function tradePanel(m) {
 }
 
 /** A bonded token whose canonical pool was not found. Shared by both modes. */
+/** A launch paired with an ERC-20 (V4R D3): not traded here, and why. */
+const pairPanel = (r) => html`
+            <div class="tphd"><h3>Paired with an ERC-20</h3></div>
+            <p class="cardnote" style="margin:0">${r.symbol || "This token"} trades against ${short(r.pairToken)},
+              not native ETH. cumTrade trades ETH-paired launches only, for now.</p>
+            <a class="btn" style="text-align:center;text-decoration:none"
+              href="${"https://clank.trade/token/" + r.token}" target="_blank" rel="noopener noreferrer"
+              >Open on clank.trade</a>
+          `;
+
 const noPoolPanel = (r) => html`
             <div class="tphd"><h3>No pool found</h3></div>
             <p class="cardnote" style="margin:0">This curve has bonded, but the canonical V4 pool
@@ -1057,6 +1067,7 @@ const slippageRow = () => html`<div class="tprow"><span>Slippage</span><label cl
  * as the exact string, and the sell side reads what the wallet actually holds.
  */
 export function hostedTradePanel(r, h = holdingOf(r.token)) {
+  if (r.pairToken) return pairPanel(r);
   if (r.graduated && !r.v4) return noPoolPanel(r);
   const symbol = r.symbol || short(r.token);
   const feeBps = venueFeeBps(r);
@@ -1189,6 +1200,7 @@ function selfPosition(r) {
 
 /** The console's trade panel: its keystore wallet, its per-trade cap, its wallets' ticks. */
 function selfTradePanel(r) {
+  if (r.pairToken) return pairPanel(r);
   if (r.graduated && !r.v4) return noPoolPanel(r);
   const blocked = buyBlocked();
   const risky = !r.graduated && (r.sellable === false || r.band === "AVOID");

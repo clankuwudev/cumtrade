@@ -123,3 +123,15 @@ test("the slippage shown is the quick-buy setting, and is edited right in the pa
     assert.doesNotMatch(html, /Quick buy|sidebar/);
   }
 });
+
+test("a launch paired with an ERC-20 (V4R D3): no Buy or Sell, the pair named, and clank.trade linked", () => {
+  const pair = "0x00000000000000000000000000000000000E20c0";
+  const html = panel(row({ pairToken: pair }), { h: holding("ok", 10n ** 18n) });
+  assert.equal(button(html, 'data-buy="[^"]*"'), null, "no Buy");
+  assert.equal(button(html, 'data-sell="[^"]*"'), null, "no Sell");
+  assert.match(html, /Paired with an ERC-20/);
+  assert.match(html, /ETH-paired launches only/);
+  assert.match(html, /href="https:\/\/clank\.trade\/token\/0x00000000000000000000000000000000000070a1"/);
+  // A native-ETH launch (pairToken null) still trades.
+  assert.ok(button(panel(row({ pairToken: null })), 'data-buy="[^"]*"'));
+});

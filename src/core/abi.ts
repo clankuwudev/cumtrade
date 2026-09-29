@@ -7,11 +7,12 @@ import { parseAbi } from "viem";
 
 export const factoryAbi = parseAbi([
   "function getLaunch(address token) view returns (bytes)",
-  // Not a bool. The factory's registry entry: a 15-word struct of token, curve,
-  // creator (twice), graduation threshold, V4 fee and tick spacing, a status
-  // word and a final 1. It is all zeros, not a revert, for an address the
-  // factory never launched. Only the first two words are decoded.
-  "function getLaunchedToken(address token) view returns (address token, address curve)",
+  // Not a bool. The factory's registry entry, a 15-word struct, named as
+  // clank.trade's developer docs name it (developer.clank.trade, Contracts;
+  // V4R). It is all zeros, not a revert, for an address the factory never
+  // launched. A static struct encodes as its fields in a row, so they are
+  // decoded as separate outputs: the first two are what the checker reads.
+  "function getLaunchedToken(address token) view returns (address token, address curve, address deployer, address creatorFeeRecipient, address pairToken, uint256 graduationThreshold, uint24 poolFee, int24 tickSpacing, uint16 creatorTaxBps, bool buybackEnabled, uint8 phase, uint256 sweptPairToken, uint256 sweptLaunchTokens, uint256 sweptAt, bool exists)",
   "function tokenForCurve(address curve) view returns (address)",
   "function launchFee() view returns (uint256)",
   "function launchEnabled() view returns (bool)",
@@ -38,9 +39,12 @@ export const curveAbi = parseAbi([
   // sell returns 3. quoteSell reverts with InsufficientRealReserve (0x3d5b7999)
   // once the requested size would drain more ETH than the curve really holds,
   // so a large position cannot always be exited in one go.
-  "function quoteBuy(uint256 amountIn) view returns (uint256 amountIn_, uint256 amountInAfterFee, uint256 fee, uint256 tokensOut, uint256 snipeTax)",
+  // Named as clank.trade's developer docs name quoteBuyFor's (V4R D5): the
+  // fifth word is the refund a buy that finishes the curve gets back, not a
+  // snipe tax. A tax, when one is charged, is inside the fee.
+  "function quoteBuy(uint256 amountIn) view returns (uint256 grossUsed, uint256 netIn, uint256 fee, uint256 tokensOut, uint256 refund)",
   "function quoteSell(uint256 tokensIn) view returns (uint256 quoteOutGross, uint256 quoteOutNet, uint256 fee)",
-  "function quoteBuyFor(address buyer, uint256 amountIn) view returns (uint256, uint256, uint256, uint256, uint256)",
+  "function quoteBuyFor(address buyer, uint256 amountIn) view returns (uint256 grossUsed, uint256 netIn, uint256 fee, uint256 tokensOut, uint256 refund)",
   // --- reserves / pricing (constant product over virtual + real reserves) ---
   "function getReserves() view returns (uint256 quoteReserve, uint256 tokenReserve)",
   "function quoteReserve() view returns (uint256)",

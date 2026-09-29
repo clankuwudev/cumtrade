@@ -125,6 +125,16 @@ test("the limits are inclusive: an hour's expiry, a 30-minute deadline and 3M ga
   assert.deepEqual(verifyPlan(sell.plan, sell.intent, sell.reads), { ok: true });
 });
 
+test("a buy that finishes the curve passes with its minimum scaled to what the curve uses (V4R D5)", async () => {
+  const buy = await setup("curve buy");
+  const amount = BigInt(buy.plan.quote.amountIn), used = amount - amount / 4n;
+  const base = (BigInt(buy.plan.quote.expectedOut) * BigInt(10_000 - buy.intent.slippageBps)) / 10_000n;
+  const scaled = (base * amount + used - 1n) / used;
+  Object.assign(buy.plan.quote, { usedWei: used.toString(), refundWei: (amount - used).toString(), minOut: scaled.toString() });
+  buy.plan.steps[0].data = recall(buy.plan.steps[0].data, (a) => (a[1] = scaled, a));
+  assert.deepEqual(verifyPlan(buy.plan, buy.intent, buy.reads), { ok: true });
+});
+
 // ---------------------------------------------------------------- refusals --
 
 /**
@@ -208,6 +218,12 @@ const refusals = [
     plan.steps[0].data = recall(plan.steps[0].data, (a) => (a[1] = 1n, a));
   }],
   ["a quote that accepts nothing", "curve buy", null, "min-out", ({ plan }) => { plan.quote.minOut = "0"; }],
+  ["a finishing buy's minimum left unscaled (V4R D5)", "curve buy", null, "min-out", ({ plan }) => {
+    plan.quote.usedWei = (BigInt(plan.quote.amountIn) / 2n).toString();
+  }],
+  ["a curve that uses more than is sent", "curve buy", null, "min-out", ({ plan }) => {
+    plan.quote.usedWei = (BigInt(plan.quote.amountIn) + 1n).toString();
+  }],
   ["slippage other than the visitor's", "curve buy", null, "slippage", ({ intent }) => { intent.slippageBps = 300; }],
   ["a capped sell smaller than asked", "curve sell with approval", null, "amount", ({ intent }) => {
     intent.tokens = (BigInt(intent.tokens) * 2n).toString();
@@ -217,6 +233,12 @@ const refusals = [
   }],
   ["taking a different currency", "v4 buy", 0, "take", ({ plan }) => {
     plan.steps[0].data = reswap(plan.steps[0].data, (s) => { s.take[0] = ATTACKER; });
+  }],
+  ["a per-hop price floor", "v4 buy", 0, "min-hop", ({ plan }) => {
+    plan.steps[0].data = reswap(plan.steps[0].data, (s) => { s.minHop = 1n; });
+  }],
+  ["the generic V4 tuple, without minHopPriceX36 (V4R)", "v4 sell with both approvals", 2, "calldata", ({ plan }) => {
+    plan.steps[2].data = reswap(plan.steps[2].data, (s) => { s.legacy = true; });
   }],
   ["data passed to the hook", "v4 buy", 0, "hook-data", ({ plan }) => {
     plan.steps[0].data = reswap(plan.steps[0].data, (s) => { s.hookData = "0x01"; });

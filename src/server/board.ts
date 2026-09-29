@@ -17,6 +17,8 @@ import { BACKFILL, BOARD_MAX, DEAD_AFTER_S, POOL, REFRESH_MS, SWEEP_MS } from ".
 
 export type Row = {
   token: Address; curve: Address; creator: Address;
+  /** The ERC-20 the curve trades against, or null for native ETH (V4R D3). */
+  pairToken?: Address | null;
   name: string; symbol: string; logo: string;
   block: number; launchedAt: number;
   band: string; score: number; findings: Finding[];
@@ -296,6 +298,7 @@ export async function analyseInto(
       block: block || rows.get(key)?.block || 0, launchedAt: Number(a.launchedAt),
       band: s.band, score: s.value, findings,
       sellable: sellableOf(a.sim),
+      pairToken: a.isNative ? null : a.pairToken,
       devBuyPct: d.creatorBundlePct, bundlePct: d.foreignBundlePct,
       top10Pct: d.top10Pct, holders: a.holders.length,
       priorLaunches: a.creatorLaunches.length, priorDead: dead,

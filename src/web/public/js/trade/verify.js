@@ -203,8 +203,16 @@ function checkPlan(plan, intent, reads) {
   const expected = decimal(q.expectedOut, "min-out", "The expected output");
   const minOut = decimal(q.minOut, "min-out", "The minimum output");
   need(minOut > 0n, "min-out", "The plan accepts receiving nothing.");
-  need(minOut === (expected * BigInt(10_000 - slip)) / 10_000n, "min-out",
-    `The plan's minimum ${minOut} is not ${slip / 100}% under its expected ${expected}.`);
+  // A buy that finishes the curve uses only part of its input, and the curve
+  // checks the minimum in proportion: it is scaled up by what is sent over
+  // what is used (V4R D5). usedWei can only raise the minimum, never lower it.
+  const used = q.usedWei === undefined ? amount : decimal(q.usedWei, "min-out", "The input the curve uses");
+  need(used > 0n && used <= amount, "min-out", `The plan says the curve uses ${used} of ${amount}.`);
+  const base = (expected * BigInt(10_000 - slip)) / 10_000n;
+  const want = used < amount ? (base * amount + used - 1n) / used : base;
+  need(minOut === want, "min-out", used < amount
+    ? `The plan's minimum ${minOut} is not ${slip / 100}% under its expected ${expected}, scaled to the ${used} the curve uses.`
+    : `The plan's minimum ${minOut} is not ${slip / 100}% under its expected ${expected}.`);
 
   const kinds = plan.steps.map((s) => (s && typeof s === "object" ? s.kind : null));
   need(SEQUENCES[`${side}:${venue}`].some((seq) => JSON.stringify(seq) === JSON.stringify(kinds)), "sequence",
@@ -299,17 +307,20 @@ const STEPS = {
       `The V4 actions are 0x${actions} with ${params.length} parameter(s), not swap, settle all, take all.`);
     const [swap, settle, take] = params;
 
-    // ExactInputSingleParams: the pool key, the direction, the amounts, and
-    // hook data, behind one leading offset.
+    // ExactInputSingleParams as Robinhood's Universal Router reads it: the
+    // pool key, the direction, the amounts, a per-hop price floor, and hook
+    // data, behind one leading offset (developer.clank.trade; V4R).
     const at = sizeAt(swap, 0);
     const currency0 = addressAt(swap, at), currency1 = addressAt(swap, at + 32);
     const fee = uintAt(swap, at + 64, 24), tickSpacing = int24At(swap, at + 96), hooks = addressAt(swap, at + 128);
     const zeroForOne = boolAt(swap, at + 160);
     const amountIn = uintAt(swap, at + 192, 128), amountOutMinimum = uintAt(swap, at + 224, 128);
-    const hookData = bytesAt(swap, at + 256, at);
+    // Robinhood's router reads a minHopPriceX36 before the hook data (V4R).
+    const minHopPriceX36 = uintAt(swap, at + 256);
+    const hookData = bytesAt(swap, at + 288, at);
     canonical(swap, encTuple([{
       tail: encTuple([
-        { head: [currency0, currency1, fee, tickSpacing, hooks, zeroForOne ? 1n : 0n, amountIn, amountOutMinimum].map(word).join("") },
+        { head: [currency0, currency1, fee, tickSpacing, hooks, zeroForOne ? 1n : 0n, amountIn, amountOutMinimum, minHopPriceX36].map(word).join("") },
         { tail: encBytes(hookData) },
       ]),
     }]), "The swap parameters");
@@ -324,6 +335,8 @@ const STEPS = {
       `The swap goes ${zeroForOne ? "from ETH to the token" : "from the token to ETH"}, and you asked to ${c.side}.`);
     need(amountIn === c.amount, "amount", `The swap puts in ${amountIn}, not the ${c.amount} you asked for.`);
     need(amountOutMinimum === c.minOut, "min-out", `The swap accepts ${amountOutMinimum}, not the quoted minimum ${c.minOut}.`);
+    need(minHopPriceX36 === 0n, "min-hop",
+      `The swap sets a per-hop price floor of ${minHopPriceX36}; this site sends none, and the minimum out protects the trade.`);
     need(hookData === "", "hook-data", "The swap passes data to the pool's hook.");
 
     const [paid, received] = c.side === "buy" ? [NATIVE, c.token] : [c.token, NATIVE];
