@@ -1,0 +1,227 @@
+# Hosted clankbot behind TLS (public-release H1, H1.2). Installed as
+# /etc/caddy/Caddyfile. See docs/deploy.md.
+#
+# SITE_HOST comes from Caddy's environment (`systemctl edit caddy`). Anything
+# that differs between machines, such as staging's password or a rehearsal's
+# local certificate, is a snippet in /etc/clank/site.d/.
+#
+# Caddy serves the page and every static file from the live release, which
+# the web process cannot write. Node answers /healthz, /events and /api/*, and
+# nothing it answers can act as a page (H1.2).
+
+# The visitor's address behind Cloudflare (P1b, P-D3). The site is proxied
+# through Cloudflare, so every connection to it comes from a Cloudflare
+# address, and the real visitor is in CF-Connecting-IP. Caddy believes that
+# header only when the connection itself comes from one of Cloudflare's ranges
+# below; from anywhere else it is ignored, so a direct caller can't choose
+# its address. Without Cloudflare in front, nothing comes from these ranges
+# and nothing changes.
+#
+# The ranges are Cloudflare's published lists, www.cloudflare.com/ips-v4 and
+# ips-v6, fetched 2026-09-27. Refresh them by hand when Cloudflare announces
+# a change.
+#
+# This is for every host on this Caddy. api.clankuwu.com is not proxied, and
+# Node keys its limits on the last X-Forwarded-For entry, the one Caddy
+# writes: the address that connected, so it can't be forged.
+{
+	servers {
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+{$SITE_HOST} {
+	import /etc/clank/site.d/*.caddy
+
+	# Not the event stream: a compressor may hold events back to fill a block.
+	@compressible not path /events
+	encode @compressible zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# The three pages, from the live release (H1.2, L1): the landing at /, the
+	# app at /trade and /console, and cumAI at /ai (L4b). release-hosted.mjs
+	# rendered each for its commit and wrote each one's policy, from
+	# landingPageHeaders(), hostedPageHeaders() and aiPageHeaders() in
+	# src/server/http.ts. Caddy reads a policy file on each request, so a
+	# deploy switches a page and its policy together, and no reload is needed.
+	# The other headers are the same for every page and every release;
+	# test:release holds them equal to those functions' lists. Without its
+	# policy file there is no page.
+	@landing path /
+	handle @landing {
+		@nopolicy not file {
+			root /srv/clank/current/page
+			try_files /landing-policy.txt
+		}
+		respond @nopolicy "No landing policy in this release." 503
+
+		root * /srv/clank/current/page
+		rewrite * /landing.html
+		header {
+			Content-Security-Policy "{file./srv/clank/current/page/landing-policy.txt}"
+			Cross-Origin-Opener-Policy same-origin
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+			X-Content-Type-Options nosniff
+			Cache-Control no-store
+		}
+		file_server
+	}
+
+	@ai path /ai
+	handle @ai {
+		@nopolicy not file {
+			root /srv/clank/current/page
+			try_files /ai-policy.txt
+		}
+		respond @nopolicy "No cumAI policy in this release." 503
+
+		root * /srv/clank/current/page
+		rewrite * /ai.html
+		header {
+			Content-Security-Policy "{file./srv/clank/current/page/ai-policy.txt}"
+			Cross-Origin-Opener-Policy same-origin
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+			X-Content-Type-Options nosniff
+			Cache-Control no-store
+		}
+		file_server
+	}
+
+	# The app's old names (L1 N-D9; P2b, 2026-09-26: /os too, now that cumOS
+	# names the platform and the app is cumTrade at /trade). A browser keeps the
+	# fragment across a redirect, so /os#/token/0x… lands on /trade#/token/0x…,
+	# and the gateway's sign-in link /os#/learn/terms?version=… on the terms.
+	# The `*` is the matcher: without it Caddy reads the target as one, and
+	# answers the old names with an empty 200 (found live at L5).
+	@renamed path /os /cumOS /cumos /terminal
+	handle @renamed {
+		# {?query} keeps a query (a Google or X login's return, ?code=…, begun on
+		# /os just before the move), with no "?" when there is none (Caddy 2.11).
+		redir * /trade{?query} 301
+	}
+
+	@page path /trade /console
+	handle @page {
+		@nopolicy not file {
+			root /srv/clank/current/page
+			try_files /policy.txt
+		}
+		respond @nopolicy "No page policy in this release." 503
+
+		root * /srv/clank/current/page
+		rewrite * /index.html
+		header {
+			Content-Security-Policy "{file./srv/clank/current/page/policy.txt}"
+			Cross-Origin-Opener-Policy same-origin
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+			X-Content-Type-Options nosniff
+			Cache-Control no-store
+		}
+		file_server
+	}
+
+	# The live release's manifest: the hashes of the page and of every file
+	# under /v/<sha>/. scripts/verify-live.mjs rebuilds it from the source.
+	@manifest path /release-manifest.json
+	handle @manifest {
+		root * /srv/clank/current
+		header {
+			Cache-Control no-cache
+			X-Content-Type-Options nosniff
+			Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+		}
+		file_server
+	}
+
+	# Each release's files under its own commit. A tab opened on one release
+	# keeps loading that release's modules after the next deploy, so HTML and
+	# modules never mix. activate.sh keeps the last five releases on disk.
+	# Nothing here is a document (the release refuses one), and the policy
+	# makes sure: it changes nothing for a module, stylesheet or font.
+	@release path_regexp release ^/v/([0-9a-f]{40})/(.+)$
+	handle @release {
+		root * /srv/clank/releases/{re.release.1}/src/web/public
+		rewrite * /{re.release.2}
+		header {
+			Cache-Control "public, max-age=31536000, immutable"
+			X-Content-Type-Options nosniff
+			Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+		}
+		file_server
+	}
+
+	# Node: the API, the event stream and the health check. Never the page.
+	@node path /healthz /events /api/*
+	handle @node {
+		reverse_proxy 127.0.0.1:8787 {
+			# Events go out as they are written.
+			flush_interval -1
+			# Hold a request through a restart instead of answering 502. An
+			# EventSource that gets any non-200 never tries again (B5.3).
+			lb_try_duration 10s
+			lb_try_interval 250ms
+			# The visitor, as the global options above decide it: through
+			# Cloudflare its CF-Connecting-IP, and direct, the address that
+			# connected. Node (TRUST_PROXY=1) keys its rate limits on this one
+			# entry; whatever the client sent in X-Forwarded-For is replaced.
+			header_up X-Forwarded-For {client_ip}
+
+			# Whatever Node answers is data, never a page on this origin, where
+			# the trading wallet keeps its session (H1.2). A document it sends
+			# is sandboxed with no script; a script or stylesheet type is
+			# served as bytes, which nosniff stops a browser running or
+			# applying; and it sets no cookie and clears no site data.
+			header_down Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+			header_down X-Content-Type-Options nosniff
+			header_down X-Frame-Options DENY
+			header_down Content-Type "(?i)^.*(script|css).*$" "application/octet-stream"
+			header_down -Set-Cookie
+			header_down -Clear-Site-Data
+		}
+	}
+
+	handle {
+		respond 404
+	}
+
+	# Method, path, status, size and time. Not the query string, which can hold
+	# an address someone looked up (B3), and not IPs, user agents, referrers or
+	# credentials: whether any of those may be kept is for the legal gate.
+	log {
+		output file /var/log/caddy/clank-access.log {
+			roll_size 50MiB
+			roll_keep 5
+		}
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp \?.*$ ""
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+				request>headers delete
+				request>tls delete
+				resp_headers delete
+				user_id delete
+			}
+		}
+	}
+}
+
+# The gateway's own host (X18): deploy/gateway.caddy, installed in
+# /etc/clank/gateway.d/ on a machine that runs the gateway. Elsewhere this
+# imports nothing, and Caddy needs no API_HOST.
+import /etc/clank/gateway.d/*.caddy
+
+# Production's redirect-only hosts (L1 N3): deploy/redirects.caddy, installed
+# in /etc/clank/redirects.d/ on production alone. Elsewhere this imports
+# nothing.
+import /etc/clank/redirects.d/*.caddy

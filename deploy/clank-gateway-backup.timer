@@ -1,0 +1,14 @@
+# Nightly at 03:17 UTC (X24 B5). Installed as
+# /etc/systemd/system/clank-gateway-backup.timer. A night the machine was off
+# runs when it is back (Persistent).
+
+[Unit]
+Description=clankbot gateway: the ledger's nightly backup, at 03:17 UTC
+
+[Timer]
+OnCalendar=*-*-* 03:17:00 UTC
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

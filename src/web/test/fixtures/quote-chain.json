@@ -1,0 +1,130 @@
+{
+  "about": [
+    "Real answers from Robinhood Chain's public RPC at block 69575529, recorded 2026-09-22, read-only.",
+    "`calls` is every eth_call the page's readQuote made, with the node's answer verbatim (block tag pinned).",
+    "`fills` are what eth_simulateV1 delivered for the same swaps at the same block, from a made-up probe",
+    "address with overridden ETH and CABO balances: the mechanism prepare.ts quotes V4 trades with.",
+    "`ticks` is a second snapshot, at its own block: CABO's liquidity and its two initialised ticks (the full range), read by the page's poolReader."
+  ],
+  "block": 69575529,
+  "probe": "0x00000000000000000000000000000000000A11cE",
+  "factory": "0xb45beb38f21be1d29e6b9c6e9dc4222d1c12f1f1",
+  "curve": {
+    "token": "0xe1e17d8c662be09b05b9a0afaff2bccf59bcf719",
+    "curve": "0x2b61d4d8f304fdd8353d87f097739420f9b7bfb9",
+    "buy": {
+      "amountIn": "10000000000000000"
+    },
+    "sell": {
+      "tokens": "1000000000000000000000000"
+    },
+    "reserves": {
+      "quoteReserve": "0x00000000000000000000000000000000000000000000000018006b163309c000",
+      "tokenReserve": "0x00000000000000000000000000000000000000000368f3a5faace108a2c67e8f",
+      "phantomQuote": "0x00000000000000000000000000000000000000000000000017508f1956a80000",
+      "feeBps": "0x0000000000000000000000000000000000000000000000000000000000000064"
+    }
+  },
+  "v4": {
+    "token": "0xcf5b720f33febdc1c9d4880b8317203b63fdf368",
+    "curve": "0xa9bf518b3692d1738270a3c12ed7c7a6ba92245b",
+    "hook": "0xd405e0dff2d0cc7eaa48b3aec2e3f2456c072000",
+    "fee": 3000,
+    "tickSpacing": 200,
+    "swaps": [
+      {
+        "name": "buy 0.01 ETH",
+        "side": "buy",
+        "amountIn": "10000000000000000",
+        "fill": "124244816555872301182659"
+      },
+      {
+        "name": "buy 1 ETH",
+        "side": "buy",
+        "amountIn": "1000000000000000000",
+        "fill": "11157707843997601171298943"
+      },
+      {
+        "name": "buy 10 ETH, crossing a bitmap word",
+        "side": "buy",
+        "amountIn": "10000000000000000000",
+        "fill": "57905271649266107377628814"
+      },
+      {
+        "name": "sell 100K CABO",
+        "side": "sell",
+        "amountIn": "100000000000000000000000",
+        "fill": "7983884134487354"
+      },
+      {
+        "name": "sell 800M CABO, crossing a bitmap word",
+        "side": "sell",
+        "amountIn": "800000000000000000000000000",
+        "fill": "7645283065072813980"
+      }
+    ]
+  },
+  "calls": [
+    {
+      "to": "0x2b61d4d8f304fdd8353d87f097739420f9b7bfb9",
+      "data": "0x5ed0447d00000000000000000000000000000000000000000000000000000000000a11ce000000000000000000000000000000000000000000000000002386f26fc10000",
+      "result": "0x000000000000000000000000000000000000000000000000002386f26fc1000000000000000000000000000000000000000000000000000000232bff5f46c00000000000000000000000000000000000000000000000000000005af3107a400000000000000000000000000000000000000000000004f7f01f5184f20d77489a0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "to": "0x2b61d4d8f304fdd8353d87f097739420f9b7bfb9",
+      "data": "0xa64190c400000000000000000000000000000000000000000000d3c21bcecceda1000000",
+      "result": "0x0000000000000000000000000000000000000000000000000005d115c9040f760000000000000000000000000000000000000000000000000005c231ba34a8e800000000000000000000000000000000000000000000000000000ee40ecf668e"
+    },
+    {
+      "to": "0xb45beb38f21be1d29e6b9c6e9dc4222d1c12f1f1",
+      "data": "0xdc4c90d3",
+      "result": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+    },
+    {
+      "to": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "data": "0x1e2eaeaf40527acbfe72f88399af41ffc4514a10feb3645560e8c6e07b29473a1168f9c6",
+      "result": "0x000000000bb8000000027e490000000000000dcc29b5e12dda44ddacdd8a3834"
+    },
+    {
+      "to": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "data": "0x1e2eaeaf40527acbfe72f88399af41ffc4514a10feb3645560e8c6e07b29473a1168f9c9",
+      "result": "0x00000000000000000000000000000000000000000000067ec1efa52d99df5d1e"
+    },
+    {
+      "to": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "data": "0x1e2eaeaf76c49bf218a5d201c0fe97f693ecbbc617a37034d13f966e266b01edf99bee5b",
+      "result": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "to": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "data": "0x1e2eaeaf56b9e3355e01f5b86e57d7e8412674f655785019fecff44e6493f58c8a70f55e",
+      "result": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "to": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "data": "0x1e2eaeaf0159a9270b8ae1f19d4331e400d07f77fdb8583df6c26efb83cee48351bb82d7",
+      "result": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "ticks": {
+    "block": 69583596,
+    "manager": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+    "calls": [
+      {
+        "to": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+        "data": "0x1e2eaeaf40527acbfe72f88399af41ffc4514a10feb3645560e8c6e07b29473a1168f9c9",
+        "result": "0x00000000000000000000000000000000000000000000067ec1efa52d99df5d1e"
+      },
+      {
+        "to": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+        "data": "0x1e2eaeafcfba160ab88e729488c60ddf527789e8a524c65acc9f9f9705a3f2707030a52b",
+        "result": "0x000000000000067ec1efa52d99df5d1e000000000000067ec1efa52d99df5d1e"
+      },
+      {
+        "to": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+        "data": "0x1e2eaeafb0b62a54aafd9f15722a0d98e0da0737bce24c15849068d80d3264bc879e5cf4",
+        "result": "0xfffffffffffff9813e105ad26620a2e2000000000000067ec1efa52d99df5d1e"
+      }
+    ]
+  }
+}

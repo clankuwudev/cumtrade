@@ -1,0 +1,108 @@
+{
+  "about": [
+    "What is published (public-release O1.2): the hosted graph, plus what it needs to build, test and run.",
+    "An allowlist, so it fails safe: a path is published only when an include matches it and no exclude does. A new private note is left out by default.",
+    "Patterns are repository paths. `**` matches across directories and `*` within one name.",
+    "scripts/check-publish.mjs refuses its own never-list whatever this file says: src/self/, the console and Solana entrypoints, sol/, the Solana scripts, art/, data/ and the private docs.",
+    "It also fails when a published file needs one that is not published, so a test that reaches src/self/ has to be excluded here, with its reason.",
+    "rename: a listed file published under another name. package: what scripts/export-public.mjs keeps of package.json (O1.4a)."
+  ],
+  "include": [
+    { "path": "LICENSE", "why": "MIT (Q2, the user, 2026-09-22)." },
+    { "path": "src/entry/hosted.ts", "why": "The hosted entrypoint." },
+    { "path": "src/cli/check.ts", "why": "npm run check: the same checker on one address, from a terminal. It imports only src/core/." },
+    { "path": "src/entry/mode-hosted.ts", "why": "hosted.ts imports it first, to mark the process as hosted." },
+    { "path": "src/core/**", "why": "Shared chain code: the checker, the markets, positions and the record. The hosted entry reaches most of it; the record is reached by its tests." },
+    { "path": "src/server/**", "why": "The HTTP server, the hosted route table, prepare, the ledger API and their tests." },
+    { "path": "src/web/**", "why": "The web app and its tests. The hosted release already serves every file under src/web/public/ to anyone." },
+    { "path": "deploy/**", "why": "Hosting it: Caddy, the systemd unit, the deploy, activate and uninstall scripts, the env template." },
+    { "path": "scripts/release-hosted.mjs", "why": "Builds a hosted release from a commit (H1)." },
+    { "path": "scripts/release-hosted.test.mjs", "why": "npm run test:release." },
+    { "path": "scripts/release-common.mjs", "why": "The release build's shared steps: reading a commit's files, the production install, the tarball." },
+    { "path": "scripts/release-page.mjs", "why": "What a hosted release serves and how its page is rendered (H1.2): the release build and verify-live share it." },
+    { "path": "scripts/verify-live.mjs", "why": "npm run verify:live: anyone can compare the live site with the source at the sha its page shows (H1.2)." },
+    { "path": "scripts/check-boundary.mjs", "why": "npm run typecheck: proves the hosted graph never reaches src/self/." },
+    { "path": "scripts/check-web.mjs", "why": "npm run typecheck: the page's structural and escaping rules." },
+    { "path": "scripts/check-trusted-types.mjs", "why": "npm run check:trusted-types: every hosted page under Trusted Types in headless Chrome (P4 T1)." },
+    { "path": "scripts/check-publish.mjs", "why": "This check, which CI in the published tree runs with an empty denylist." },
+    { "path": "scripts/check-publish.test.mjs", "why": "npm run test:publish." },
+    { "path": "scripts/publish-files.json", "why": "This list." },
+    { "path": "scripts/publish-allowlist.json", "why": "The public constants and reviewed fixtures the check allows." },
+    { "path": "scripts/trace-modules.mjs", "why": "Lists the modules a hosted process loads, to show none is under src/self/ (B1.2)." },
+    { "path": "scripts/trace-modules-hooks.mjs", "why": "trace-modules.mjs's resolve hook." },
+    { "path": "scripts/record-ledger-fixture.mts", "why": "Re-records the ledger fixtures from a third party's public history." },
+    { "path": "scripts/vendor-wallet.mjs", "why": "npm run vendor:wallet: builds the trading wallet's SDK bundle, which is not published (see exclude). A clone builds it and compares with the published hash." },
+    { "path": "scripts/vendor-wallet.test.mjs", "why": "npm run test:vendor: the build is reproducible and matches the published hash." },
+    { "path": "scripts/vendor-wallet-facade.test.mjs", "why": "npm run test:vendor: the facade's wallet login and signing, run against a stand-in for Coinbase's SDK." },
+    { "path": "scripts/vendor/wallet-entry.js", "why": "The facade the bundle is built from." },
+    { "path": "scripts/vendor-charts.mjs", "why": "npm run vendor:charts: builds the token page's chart bundle (TradingView Lightweight Charts, Apache-2.0), which is published with its hash and licences." },
+    { "path": "scripts/vendor-charts.test.mjs", "why": "npm run test:vendor: the chart bundle passes the page's rules, and a fresh build matches the committed one." },
+    { "path": "scripts/vendor/charts-entry.js", "why": "What the chart bundle exports." },
+    { "path": "docs/architecture.md", "why": "The chain and the contracts as reconstructed from bytecode: what the checker's rules stand on." },
+    { "path": "docs/deploy.public.md", "why": "Published as docs/deploy.md (see rename): how to deploy, check and remove the site." },
+    { "path": "package.json", "why": "Dependencies and scripts. O1.4 publishes a trimmed copy: see the spec." },
+    { "path": "package-lock.json", "why": "The locked dependency tree. O1.4 regenerates it with the trimmed package.json." },
+    { "path": "tsconfig.json", "why": "npm run typecheck." },
+    { "path": "tsconfig.web.json", "why": "npm run typecheck, for the page's modules." },
+    { "path": ".gitignore.public", "why": "Published as .gitignore (see rename). Keeps .env files, data/, releases/ and the SDK bundle a clone builds out of its commits." },
+    { "path": ".gitattributes", "why": "LF for the deploy scripts; the fonts are never converted." },
+    { "path": ".env.hosted.example", "why": "The hosted environment, for running it locally." },
+    { "path": "README.public.md", "why": "Published as README.md (see rename): the web app's README (O1.4a)." }
+  ],
+  "exclude": [
+    { "path": "src/server/routes/self.ts", "why": "The console's route table. Nothing hosted reaches it." },
+    { "path": "scripts/check-web.test.mjs", "why": "Plants imports of the unpublished wallet bundle, in every shape, as input for check-web's rules. check-web itself is published and runs in npm run typecheck." },
+    { "path": "src/core/checker/authenticity.test.ts", "why": "Imports the sniper's strategy and watchlist from src/self/engine/." },
+    { "path": "src/core/lib/jsonStore.test.ts", "why": "Exercises the console's position store and spend meter from src/self/." },
+    { "path": "src/server/headers.test.ts", "why": "Boots the console's route table beside hosted's." },
+    { "path": "src/server/routes.test.ts", "why": "Boots the console's route table beside hosted's." },
+    { "path": "src/web/public/vendor/wallet.js", "why": "Coinbase's packages declare no licence, so their bundled code is not republished (the user, 2026-09-22). wallet.js.sha256 is, and npm run vendor:wallet rebuilds the same bytes." },
+    { "path": "src/web/public/vendor/LICENSES.txt", "why": "The licence notes of the bundle above, which is not published." }
+  ],
+  "optional": [
+    { "from": "src/web/public/js/wallet/embedded.js", "needs": "src/web/public/vendor/wallet.js", "why": "Loads the SDK bundle on login. The bundle is not published; a clone builds it with npm run vendor:wallet." },
+    { "from": "src/web/test/about.test.js", "needs": "src/gateway/signin.ts", "why": "Compares the terms version the page shows with the gateway's, and skips where the gateway's source is not published." },
+    { "from": "src/web/test/ai-pictures.test.js", "needs": "src/gateway/pictures.ts", "why": "Compares the picture shapes and prompt limit with the gateway's, and skips where the gateway's source is not published." },
+    { "from": "src/web/test/card.test.js", "needs": "src/server/routes/self.ts", "why": "Compares the share dialog's reactions with the art the console serves, and skips where there is no console." }
+  ],
+  "rename": [
+    { "from": "README.public.md", "to": "README.md", "why": "This repository's README.md documents the console and the snipers, which are not published, so it is not published either. The public one lives beside it." },
+    { "from": "docs/deploy.public.md", "to": "docs/deploy.md", "why": "This repository's docs/deploy.md also covers the private gateway and links private specs. The public guide is the site's part of it." },
+    { "from": ".gitignore.public", "to": ".gitignore", "why": "This repository commits the SDK bundle, and its .gitignore names the private tools. A clone must ignore the bundle it builds, so that it is never committed to the public repository." }
+  ],
+  "package": {
+    "about": [
+      "The published package.json (O1.4a), written by scripts/export-public.mjs from this repository's. Only what is named here is kept, so a new private script or dependency is left out by default.",
+      "scripts: kept in this repository's order, each cut to the && parts whose files are published. The export fails when one is missing, or names only unpublished files.",
+      "alias: a published script that runs another's command. `npm start` runs the web app.",
+      "fields: copied as they are. Every other field, optionalDependencies (the Solana sniper's) included, is left out."
+    ],
+    "name": "clank-uwu-model",
+    "license": "MIT",
+    "fields": ["version", "private", "type", "engines"],
+    "scripts": [
+      "check", "typecheck", "start:hosted", "release:hosted",
+      "test:pnl", "test:attribution", "test:ledger", "test:ledgerapi", "test:ledgerindex", "test:constants",
+      "test:origin", "test:gate", "test:ratelimit", "test:record", "test:venue", "test:curve", "test:index", "test:loggate",
+      "test:release", "verify:live", "check:publish", "test:publish", "test:prepare", "test:web", "vendor:wallet", "vendor:charts", "test:vendor", "check:trusted-types"
+    ],
+    "alias": { "start": "start:hosted" },
+    "dependencies": {
+      "@jsquash/jpeg": "src/core/lib/thumb.ts decodes JPEG logos for the board's thumbnails. Exact-pinned.",
+      "@jsquash/png": "src/core/lib/thumb.ts decodes PNG logos. Exact-pinned.",
+      "@jsquash/resize": "src/core/lib/thumb.ts shrinks logos. Exact-pinned.",
+      "@jsquash/webp": "src/core/lib/thumb.ts decodes and encodes WebP. Exact-pinned.",
+      "dotenv": "src/core/lib/client.ts and the attribution test read a .env file.",
+      "image-size": "src/core/lib/thumb.ts reads a logo's size before decoding it. Exact-pinned.",
+      "viem": "The chain client, everywhere."
+    },
+    "devDependencies": {
+      "@coinbase/cdp-core": "The trading wallet's SDK, which npm run vendor:wallet bundles. Exact-pinned.",
+      "@types/node": "npm run typecheck.",
+      "esbuild": "npm run vendor:wallet and vendor:charts. Exact-pinned.",
+      "lightweight-charts": "npm run vendor:charts bundles it, and vendor/charts.d.ts reads its types. Exact-pinned.",
+      "tsx": "Runs the web app and the TypeScript tests.",
+      "typescript": "npm run typecheck, the release build, the boundary check and the SDK's no-eval scan."
+    }
+  }
+}

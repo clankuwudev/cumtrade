@@ -1,0 +1,12 @@
+# Staging stays private until the pre-launch gates (H1): a password on
+# everything except the health check, which the uptime monitor needs, and
+# nothing indexed. Copy to /etc/clank/site.d/staging-private.caddy, then
+# replace the user and the hash, which comes from `caddy hash-password`.
+# Never commit the filled-in copy.
+
+@private not path /healthz
+basic_auth @private {
+	STAGING_USER STAGING_PASSWORD_HASH
+}
+
+header X-Robots-Tag "noindex, nofollow"

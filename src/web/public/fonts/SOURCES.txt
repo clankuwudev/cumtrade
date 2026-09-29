@@ -1,0 +1,47 @@
+Fonts served by the console instead of Google Fonts (public-release F5.2).
+Downloaded 2026-09-17 from each family's own repository at a pinned commit,
+unmodified. Both are licensed under the SIL Open Font License 1.1: see the
+OFL file next to each family.
+
+Schibsted Grotesk, schibsted/schibsted-grotesk @ d485f61f105e1b3935f4d21dfb4d371359798603
+  SchibstedGrotesk-Variable.woff2   from fonts/variable/SchibstedGrotesk[wght].woff2
+    sha256 8b77a34cdd59455aa3434e949597e99346204d40357905fd918df20ed1139ac1
+  SchibstedGrotesk-OFL.txt          from OFL.txt
+    sha256 3b4f3063b6ac7c1e403e2c4a5e8ef3a58190ff83ed7b15af66511858699139ce
+
+JetBrains Mono, JetBrains/JetBrainsMono @ 19371302b95d218af43299bce79ddbddd0bc364d
+  JetBrainsMono-Regular.woff2       from fonts/webfonts/JetBrainsMono-Regular.woff2
+    sha256 f1a7a03672cdd494ce0d5543fac6e4360fe22403c6de297fdc2e55a815f7baff
+  JetBrainsMono-Medium.woff2        from fonts/webfonts/JetBrainsMono-Medium.woff2
+    sha256 fe1c9099e3ea4123a6216d8a4a31970a2cfc6e9d80056da165012f406c83e219
+  JetBrainsMono-OFL.txt             from OFL.txt
+    sha256 a76abf002c49097d146e86740a3105a5d00450b1592e820a1109a8c5680cd697
+
+The variable file is renamed only because brackets in a URL invite encoding
+trouble. The font itself, and its name, are unchanged.
+
+Fonts served by the landing instead of Google Fonts (L1 L2; the user,
+2026-09-24). Downloaded 2026-09-24, unmodified: each font is Google Fonts'
+own latin woff2 for the family, the file its css2 API names for weights
+400-800, and each licence is from google/fonts at a pinned commit. All three
+are licensed under the SIL Open Font License 1.1. The latin subset is what
+the demo used: the page's arrows and check marks are in no subset of these
+families, so they fall back to a system font as they did there.
+
+Geist, fonts.gstatic.com/s/geist/v5 and google/fonts @ b5efa9c32e8f9b63005f5cdb1ad5527a77d2cd04
+  Geist-Variable.woff2              from https://fonts.gstatic.com/s/geist/v5/gyByhwUxId8gMEwcGFU.woff2
+    sha256 19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1
+  Geist-OFL.txt                     from ofl/geist/OFL.txt
+    sha256 1781d2806a07d91c4edf4740b88449fab7d0eadad53f7c351b94cd4d4eb8c00f
+
+Geist Mono, fonts.gstatic.com/s/geistmono/v6 and google/fonts @ b5efa9c32e8f9b63005f5cdb1ad5527a77d2cd04
+  GeistMono-Variable.woff2          from https://fonts.gstatic.com/s/geistmono/v6/or3nQ6H-1_WfwkMZI_qYFrcdmg.woff2
+    sha256 684ad5b531f81d43c1e8c7038262d5db7cdc1f68006e04d6c7769efa8d33c8cc
+  GeistMono-OFL.txt                 from ofl/geistmono/OFL.txt
+    sha256 1781d2806a07d91c4edf4740b88449fab7d0eadad53f7c351b94cd4d4eb8c00f
+
+Hanken Grotesk, fonts.gstatic.com/s/hankengrotesk/v12 and google/fonts @ b5efa9c32e8f9b63005f5cdb1ad5527a77d2cd04
+  HankenGrotesk-Variable.woff2      from https://fonts.gstatic.com/s/hankengrotesk/v12/ieVn2YZDLWuGJpnzaiwFXS9tYtpd59A.woff2
+    sha256 e9201eddf1d41d0b62253295d869ce3cf65768f7102b797f02c7f8c876b4a9d5
+  HankenGrotesk-OFL.txt             from ofl/hankengrotesk/OFL.txt
+    sha256 e02ccb89a86839b22feff7872ff5cc355cc0f58318d29eee20e2cf83a612f16d

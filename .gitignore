@@ -1,0 +1,20 @@
+node_modules/
+dist/
+*.log
+
+# Local state, such as the chart history of a local run.
+data/
+
+# Every env variant can hold an RPC key. The template is the one exception.
+.env
+.env.*
+!.env.hosted.example
+
+# Hosted release tarballs (npm run release:hosted). Built from a commit, never kept.
+releases/
+
+# The trading wallet's SDK bundle and its licence notes, which npm run
+# vendor:wallet builds. Coinbase's packages declare no licence, so their code
+# is not committed here. Only the bundle's hash is: wallet.js.sha256.
+src/web/public/vendor/wallet.js
+src/web/public/vendor/LICENSES.txt

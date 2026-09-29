@@ -1,0 +1,57 @@
+# The gateway at api.clankuwu.com (X18, spec x18-gateway-service.md S1, S6).
+# Installed as /etc/systemd/system/clank-gateway.service. See docs/deploy.md.
+#
+# Runs as clank-gw, which can read its release and write nothing but the credit
+# ledger. clank-deploy owns the releases and may only restart this unit. The
+# site (clank-hosted, clank-web) and the gateway cannot read each other's data
+# or env file.
+
+[Unit]
+Description=clankbot gateway: chat completions against the credit ledger
+After=network-online.target
+Wants=network-online.target
+# Never stop retrying, as the site does: the default gives up after 5 starts in
+# 10s, and would refuse the switch back after a bad release.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=clank-gw
+Group=clank-gw
+# A symlink, resolved at each start: clank-gateway-activate switches it, then restarts.
+WorkingDirectory=/srv/clank-gateway/current
+# Root-owned, mode 0600: APIMART_API_KEY, LEDGER_DB, GATEWAY_PUBLIC_HOST,
+# TRUST_PROXY=1, RPC_URL (Q3). The entry refuses a self-mode variable, and
+# MODERATION=off with a public host (M10).
+EnvironmentFile=/etc/clank/gateway.env
+ExecStart=/opt/node22/bin/node src/entry/gateway.js
+Restart=always
+RestartSec=2
+# SIGTERM drains open calls for 30s, ends the rest and waits 5s more, then
+# closes the ledger (G11). systemd must not kill it before that.
+TimeoutStopSec=45
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/clank-gateway
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

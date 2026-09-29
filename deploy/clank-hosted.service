@@ -1,0 +1,53 @@
+# Hosted clankbot (public-release H1). Installed as
+# /etc/systemd/system/clank-hosted.service. See docs/deploy.md.
+#
+# Runs as clank-web, which can read the release and write nothing but chart
+# history. clank-deploy owns the releases and may only restart this unit.
+
+[Unit]
+Description=clankbot hosted: the public board, no wallet
+After=network-online.target
+Wants=network-online.target
+# Never stop retrying. The default (5 starts in 10s) marks a crash-looping unit
+# failed for good. That leaves the site down until someone steps in, and it
+# refused the rollback that followed a bad release in the H1 rehearsal.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=clank-web
+Group=clank-web
+# A symlink, resolved at each start: activate.sh switches it, then restarts.
+WorkingDirectory=/srv/clank/current
+# Root-owned, mode 0600: RPC_URL, WS_URL, LOGS_RPC_URL, PUBLIC_ORIGIN,
+# TRUST_PROXY=1, HISTORY_FILE, INDEX_DB. Nothing that names a wallet: hosted
+# refuses to start if it does.
+EnvironmentFile=/etc/clank/hosted.env
+ExecStart=/opt/node22/bin/node src/entry/hosted.js
+Restart=always
+RestartSec=2
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/clank
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

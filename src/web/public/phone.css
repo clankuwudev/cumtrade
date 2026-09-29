@@ -1,0 +1,437 @@
+/* ---------------------------------------------------------------------------
+ * clankbot console — the phone layout (public-release F5.7).
+ *
+ * Loaded after app.css, and built from its tokens: no colour, font or radius
+ * here is new. app.css is the design canvas copied verbatim plus its runtime
+ * appendix, and stays that way; the phone rules live here instead.
+ *
+ * EVERY RULE IN THIS FILE IS INSIDE A max-width MEDIA QUERY OF 980px OR LESS.
+ * Above 980 nothing here applies, so the desktop layout cannot move.
+ * src/web/test/phone.test.js holds the file to that.
+ *
+ *   narrow      980px and below: tablets, and phones held sideways. The
+ *               notch and the in-app browser's bars are allowed for.
+ *   touch       680px and below, or 980px and below with a coarse pointer:
+ *               44px targets, and inputs of 16px so iOS does not zoom.
+ *   phone       680px and below: the tab bar, the top bar, and each page.
+ *               core/layout.js names this query too (PHONE_QUERY).
+ * ------------------------------------------------------------------------- */
+
+/* =============================== narrow ================================ */
+@media (max-width: 980px) {
+  /* iOS enlarges text when a phone turns sideways, unless told not to. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100% }
+
+  /* The design's side padding, or the notch's inset when that is wider (a
+     phone held sideways). env() is 0 where there is no notch. */
+  .selfstrip {
+    flex-wrap: wrap;
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
+  }
+  .selfstrip .syscard { flex: 1 1 200px }
+  .selfstrip .armcard { flex: 1 1 280px }
+  .page {
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
+  }
+
+  /* The top bar keeps one row: the pages close up before anything wraps. */
+  .tnav a { padding: 0 9px }
+  .tnav a[aria-current=page]::after { left: 9px; right: 9px }
+
+  /* A finding can quote a whole address, one unbroken word wider than a
+     narrow card. */
+  .frow > div { min-width: 0 }
+  .frow p, .frow b { overflow-wrap: anywhere }
+
+  /* The shared stat row (U0), two up. */
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+
+  /* An in-app browser's bars come and go; 100vh is the height with them
+     gone, so a 100vh box can end behind them. */
+  @supports (height: 100dvh) {
+    .shell, .main { min-height: 100dvh }
+    .mbox.sharebox { max-height: calc(100dvh - 40px) }
+  }
+}
+
+/* ============================ touch sizes ============================== */
+@media (max-width: 680px), (max-width: 980px) and (pointer: coarse) {
+  /* 44px targets. Buttons centre their label as they grow. */
+  .btn:not([hidden]) {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+  }
+  .chip, .qsz, .tpseg button, .wseg button, .wpick, .whoami, .syscard, .back, .tchip, .tsearch { min-height: 44px }
+  .tsearch { min-width: 44px }
+  /* A field is its own target: the box around it does not focus it. */
+  .search { padding-top: 0; padding-bottom: 0 }
+  .search input { min-height: 44px; min-width: 0; width: 100% }
+  .qfoot input { min-height: 44px; width: 56px }
+
+  /* Where a taller element would move the design, the target grows instead:
+     padding, given back by a negative margin... */
+  /* "copy" keeps its margin-left: auto, which pushes it to the row's end. */
+  .copy { padding: 15px 10px 15px 12px; margin-top: -15px; margin-bottom: -15px; margin-right: -10px }
+  .feetog { padding: 14px 6px; margin: -14px -6px }
+  .metarow a, .lcft > a:not(.btn) { padding: 14px 0; margin: -14px 0 }
+  .vnote { padding: 14px 0; margin: -9px 0 -14px }
+  td a { padding: 15px 0 }
+  /* The footer's About, Terms and Privacy, and the beta notice's link (F5.3). */
+  .footlinks a { display: inline-flex; align-items: center; min-height: 44px }
+  .betabar a { padding: 14px 0 }
+  /* ...or, for a bordered control, a transparent area around it. */
+  .addrcopy, .shr, .sw { position: relative }
+  .addrcopy::before, .shr::before, .sw::before {
+    content: ""; position: absolute; top: -12px; bottom: -12px; left: -4px; right: -4px;
+  }
+
+  /* 16px or more, or iOS zooms into the field on focus. */
+  input, select, textarea,
+  .search input, .qfoot input, .mbox input, .mbox input[type=text] { font-size: 16px }
+  /* The shared components (U0): the sheet's close, the segmented control and
+     the tabs grow; a field's input is the whole height of its box. */
+  .sheetx, .seg > button, .tabs > button { min-height: 44px }
+  .sheetx { width: 44px; margin-right: -10px }
+  .field input { min-height: 44px }
+  .field input, .mbox .field input, .mbox .field input[type=text] { font-size: 16px }
+  /* A table's sort button is a word in a short head row: it keeps the row's
+     height and takes a larger area round it, as the copy chip does. */
+  /* The token page's sizes, its slippage and its Re-check (U4). */
+  .tpre > button, .trecheck { min-height: 44px }
+  .tslip input { height: 44px; width: 64px }
+  .dtable th > button { position: relative }
+  .dtable th > button::before { content: ""; position: absolute; top: -12px; bottom: -12px; left: -6px; right: -6px }
+}
+
+/* =============================== phone ================================= */
+@media (max-width: 680px) {
+  /* ---- the top bar: the logo, search, the buy size, the wallet --------- */
+  /* The tab bar has the pages; the live dot and the price give way. */
+  .tnav, .tlive, .tstat, .tchip .lbl, .tchip .car { display: none }
+  .topin {
+    gap: 8px; height: 56px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .topin > .sp { margin-left: -8px }
+  .logo { gap: 8px; flex: 0 1 auto }
+  .logo b { font-size: 13.5px }
+  .tsearch { width: 44px; height: 44px; justify-content: center; padding: 0 }
+  .tchip { padding: 0 10px; gap: 5px }
+  /* The popover under the bar, the window's width less its margins. */
+  .pop {
+    position: fixed; top: calc(56px + env(safe-area-inset-top)); width: auto;
+    left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+  }
+  .qrow { gap: 6px }
+  /* The wallet button: the face alone once logged in, and the words while
+     it says what it does. The console's keeps its state and its lock. */
+  .top .whoami { max-width: 46vw; min-width: 0; padding-right: 10px }
+  #tw:not(.out) .wtx, #conn:not(.out) .wtx { display: none }
+  #tw:not(.out), #conn:not(.out) { padding-right: 4px }
+  #tw:not(.out) .lk:not(:empty) { margin-right: 6px }
+  #whoami .wtx .mo { display: none }
+
+  /* ---- the tab bar ---------------------------------------------------- */
+  /* It carries `hidden`; this is the one place it shows. */
+  .tabbar {
+    display: flex; gap: 2px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    padding: 0 max(6px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(6px, env(safe-area-inset-left));
+    background: var(--side); border-top: 1px solid var(--line2);
+  }
+  /* Icon over label. The router marks the current page's tab (aria-current). */
+  .tabbar a, .tabbar button {
+    flex: 1 1 0; min-width: 0; min-height: 56px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px; padding: 6px 2px; margin: 4px 0;
+    border: none; border-radius: 10px; background: none; font: inherit; font-size: 11px; font-weight: 600;
+    line-height: 1.2; color: var(--tx3); text-align: center; white-space: nowrap; overflow: hidden; cursor: pointer;
+  }
+  .tabbar a:hover, .tabbar button:hover, .tabbar [aria-current=page] { color: var(--tx) }
+  .tabbar svg { flex: none }
+  /* Room for it at the foot of every page, and toasts above it. */
+  .main { padding-bottom: calc(64px + env(safe-area-inset-bottom)) }
+  #toasts {
+    left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+    bottom: calc(76px + env(safe-area-inset-bottom)); max-width: none;
+  }
+
+  /* ---- the page ------------------------------------------------------- */
+  .page {
+    gap: 14px; padding-top: 16px; padding-bottom: 20px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .phead { gap: 12px }
+  .phead h1 { font-size: 24px }
+  .chips { gap: 6px }
+  .stats, #pstats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px }
+  .stat { padding: 13px 14px }
+  .stat b { font-size: 22px; margin-top: 7px }
+  .cardpad { padding: 15px 16px }
+
+  /* No text under 11px: the design's 9.5-10.5px labels come up to it. */
+  .bd, .sv, .pill, th, .addrcopy, .cardhd .tag, .qfoot, .kv .c i, .tip i, .whoami span, .copy,
+  .syscard b + span, .cfgrow .d { font-size: 11px }
+  /* The chart's axis labels are page text over the drawing (U8): 11px. */
+  .chartwrap .axlb { font-size: 11px }
+
+  /* ---- the board (U2): two-line rows ---------------------------------
+     Each row is a grid: the ring down the left; the symbol and its tags on
+     the first line; the market cap, the age and the verdict on the second;
+     Buy on the right across both. (The verdict beside the symbol left a
+     symbol 60px at 375.) The other columns are the token page's to show. A
+     row with a holding puts its sells and Buy on a third line. No head:
+     the sort is the menu. */
+  .board { gap: 12px }
+  .bintro { padding: 8px 8px 8px 12px; gap: 6px 10px }
+  .bintrox { width: 44px; height: 44px; margin: -8px -4px -8px 0 }
+  .bintro a { display: inline-flex; align-items: center; min-height: 44px; margin: -12px 0 }
+  .bhead h1 { font-size: 22px }
+  .bnote { margin-left: 0 }
+  .btools { padding: 10px; gap: 8px }
+  .btools .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: -2px -10px; padding: 2px 10px; width: calc(100% + 20px) }
+  .btools .chips .chip { flex: none }
+  .bfind { margin-left: 0; width: 100%; flex-wrap: nowrap }
+  .field.bq { flex: 1 1 auto; width: auto; min-width: 0 }
+  .bsort { height: 44px; flex: none; max-width: 48% }
+  .btable, .btable tbody { display: block; width: 100% }
+  .btable thead { display: none }
+  .btable tr.link {
+    display: grid; grid-template-columns: 30px auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "face sym sym sym act" "face mc age vd act";
+    column-gap: 8px; row-gap: 4px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line2);
+  }
+  .btable tbody tr.link:last-child { border-bottom: none }
+  .btable tr.link td { display: block; height: auto; padding: 0; border: none; background: none }
+  .btable tr.link:hover { background: var(--hover) }
+  .btable tr.link td.c-tok, .btable tr.link .btok { display: contents }
+  .btable tr.link .ringwrap { grid-area: face }
+  .btable tr.link .btnm { grid-area: sym }
+  .btable .bname { display: none }
+  .btable .bsym { max-width: none }
+  .btable tr.link td.c-mc { grid-area: mc; text-align: left }
+  .btable tr.link td.c-age { grid-area: age; text-align: left; color: var(--tx3) }
+  .btable tr.link td.c-vd { grid-area: vd; justify-self: end }
+  .btable tr.link td.c-act { grid-area: act; width: auto }
+  .btable tr.link td.c-grad, .btable tr.link td.c-hold, .btable tr.link td.c-top,
+  .btable tr.link td.c-dev, .btable tr.link td.c-bun { display: none }
+  .btable tr.link td.c-act:has(.hold) { grid-area: auto; grid-column: 1 / -1; grid-row: 3; margin-top: 6px }
+  /* The badge in sentence case here: the same words, narrower. */
+  .btable .bd.band { text-transform: none; letter-spacing: 0; padding: 3px 8px }
+  .btable .tradebar { flex-wrap: wrap; row-gap: 6px }
+  .btable .tradebar .btn.sm { padding: 0 14px }
+  .btable tr.link:focus-visible { box-shadow: inset 0 0 0 2px var(--acc) }
+  .btable tr.link:focus-visible td { box-shadow: none }
+  .btable tr.bskel, .btable tr.bempty { display: block }
+  .btable tr.bskel td { display: none }
+  .btable tr.bskel td:first-child { display: block; height: 64px; padding: 17px 12px; border-bottom: 1px solid var(--line2) }
+  .btable tr.bempty td { display: block }
+
+  .lc { padding: 15px; gap: 12px }
+  .lcft { flex-wrap: wrap; row-gap: 10px }
+  .kv .c { padding: 9px 9px }
+
+  /* ---- the token page (U4) ------------------------------------------ */
+  /* The header: the ring and the name on one line, the verdict under them. */
+  .thead { gap: 12px }
+  .tsym .big { font-size: 22px }
+  .tvd { margin-left: 0; flex: 1 1 100%; justify-content: start; justify-items: start }
+  .tmc .mc { font-size: 24px }
+  .tchartin { padding: 14px 14px 12px }
+  /* A finger dragging sideways reads the chart; up and down still scrolls. */
+  #chartsvg { touch-action: pan-y }
+  .tvslot { touch-action: pan-y }
+  /* The candle chart's notice drops under its note, whole. */
+  .chartnote:has(.tvattr) { flex-wrap: wrap }
+  .tvattr { margin-left: 0; flex-basis: 100% }
+  /* The four figures two up. */
+  .tfigs { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .tfig { padding: 12px 14px }
+  .tfig:nth-child(3) { border-left: none }
+  .tfig:nth-child(n+3) { border-top: 1px solid var(--line2) }
+  /* Re-check is its arrow alone here, so the three tabs fit beside it. */
+  .ttabhd .tabs { padding: 0 12px; gap: 14px }
+  .trecheck { padding: 0 12px; min-width: 44px; font-size: 16px }
+  .trecheck .trw { display: none }
+  .tpane { padding: 4px 14px 14px }
+  .addrrow { min-height: 44px }
+  .addrrow .k { width: 64px }
+  /* The Trades tab: two lines a trade, the side, ETH and when on the
+     first, the trader and the tokens under them. The head row goes. */
+  .ttrhd { display: none }
+  .ttr { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-rows: auto auto; row-gap: 3px; padding: 9px 0 }
+  .ttr .c-side { grid-column: 1; grid-row: 1 }
+  .ttr .c-eth { grid-column: 2; grid-row: 1; text-align: left }
+  .ttr .c-at { grid-column: 3; grid-row: 1; text-align: right }
+  .ttr .c-who { grid-column: 1 / 3; grid-row: 2 }
+  .ttr .c-tok { grid-column: 3; grid-row: 2 }
+  /* The Holders tab: the address, % and P&L on one line, the roles under
+     them (x25-batch2-token-page.md, X27b). First in, worth now and the rank
+     go; the head row goes too. */
+  .thrhd { display: none }
+  .thr { grid-template-columns: minmax(0, 1fr) auto auto; align-items: start; padding: 10px 0 }
+  .thr .c-rank, .thr .c-first, .thr .c-now { display: none }
+  .thr .c-who { flex-direction: column; align-items: flex-start; gap: 5px; padding: 0 }
+  .thr .c-roles:empty { display: none }
+  .thbar { display: none }
+  /* The Traders page: the rank, address and P&L on one line, closed and win
+     rate under them (x29-leaderboard.md, X29b). The paperhand rate, last
+     closed and the head row go. */
+  .trrhd { display: none }
+  .trr { grid-template-columns: 26px minmax(0, 1fr) auto; grid-template-rows: auto auto; row-gap: 3px }
+  .trr .c-rank { grid-column: 1; grid-row: 1 }
+  .trr .c-who { grid-column: 2; grid-row: 1 }
+  .trr .c-pnl { grid-column: 3; grid-row: 1 }
+  .trr .c-closed { grid-column: 2; grid-row: 2; color: var(--tx3) }
+  .trr .c-win { grid-column: 3; grid-row: 2; text-align: right; color: var(--tx3) }
+  .trr .c-paper, .trr .c-last { display: none }
+  .trr .k { display: inline }
+  .trr .mbar, .trr .c-pnl small { display: none }
+  .trr .c-closed { text-align: left }
+  .ttraders { margin: 0 -8px }
+  .trr { padding: 9px 8px }
+  .trhead .trwin { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100% }
+  /* The trade panel is a bar over the tab bar; its buttons open the panel
+     as a sheet (pages/token.js). The page, and the toasts, keep clear of it. */
+  .tpanel { display: none }
+  .tbar {
+    display: flex; gap: 8px; position: fixed; left: 0; right: 0; z-index: 39;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+    background: var(--side); border-top: 1px solid var(--line2);
+  }
+  .tbar .btn { flex: 1 1 0; min-height: 44px; font-size: 14px }
+  .tbar .btn.sell { flex: 0 0 34% }
+  .shell[data-page=token] .main { padding-bottom: calc(132px + env(safe-area-inset-bottom)) }
+  .shell[data-page=token] ~ #toasts { bottom: calc(140px + env(safe-area-inset-bottom)) }
+  .mbox.tsheet { width: 100% }
+
+  /* ---- Portfolio (U5) -------------------------------------------------
+     The lookup field takes the width. Each row of a table is stacked: the
+     token and its P&L on line 1, its value and what is held on line 2, the
+     sells (your own wallet) and Fees on the right. A closed row: the token
+     and its P&L, then cost and proceeds with how long it was held, then
+     what happened. The head row goes; each figure says what it is. */
+  .pfhdslot, .field.pfq, .pfslot { width: 100% }
+  .field.pfq { padding-right: 0 }
+  .field.pfq .btn { padding: 0 14px; border: none; background: transparent }
+  .pfout { padding: 36px 16px }
+  .pfoutrow .btn.pri { width: 100% }
+  .pftable, .pftable tbody { display: block }
+  .pftable thead { display: none }
+  .pftable tr.link {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 12px; row-gap: 4px;
+    align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line2);
+  }
+  .pftable tbody tr.link:last-child { border-bottom: none }
+  .pftable tbody tr.link:has(+ tr.pfdetail) { border-bottom-color: transparent }
+  .pftable tr.link td { display: block; width: auto; height: auto; padding: 0; border: none; min-width: 0; background: none }
+  .pftable tr.link td[data-l]::before { content: attr(data-l) " "; color: var(--tx3); font-size: 11.5px; font-weight: 400 }
+  .pftable .c-tok { grid-column: 1; grid-row: 1 }
+  .pftable .bname { max-width: 100% }
+  /* The whole row opens the token page, so its symbol needs no taller target. */
+  .pftable td a.pfsym { padding: 0 }
+  .pfopen .c-pnl { grid-column: 2; grid-row: 1 / 3; align-self: center }
+  .pfopen .c-val { grid-column: 1; grid-row: 2; justify-self: start; text-align: left }
+  .pfopen .c-held { grid-column: 1; grid-row: 2; justify-self: end }
+  .pfopen tr.link td.c-cost, .pfopen tr.link td.c-grad, .pfopen tr.link td.c-vd { display: none }
+  .pfopen .c-act { grid-column: 3; grid-row: 1 }
+  .pfopen .c-more { grid-column: 3; grid-row: 2 }
+  .pfopen .c-vd + .c-more { grid-row: 1 / 3 }
+  .pfmore { min-height: 44px; padding: 0 4px; width: 100%; text-align: right }
+  .pfclosed .c-pnl { grid-column: 2; grid-row: 1 }
+  .pfclosed .c-cost { grid-column: 1; grid-row: 2; justify-self: start; text-align: left }
+  .pfclosed .c-proc { grid-column: 1; grid-row: 2; justify-self: end }
+  .pfclosed .c-for { grid-column: 2; grid-row: 2 }
+  .pfclosed .c-why { grid-column: 1 / -1; grid-row: 3; min-width: 0; font-size: 12px }
+  /* A line of its own: in the third column it would widen that column on
+     every line and push Cost and Proceeds into each other. */
+  .pfclosed .c-sell { grid-column: 1 / -1; grid-row: 4 }
+  .pfclosed .pfsell { flex-direction: row; align-items: center; gap: 8px }
+  /* Share (P3) is a 44px target here, as every other button is. */
+  .pftable .shr { display: inline-flex; align-items: center; min-height: 44px; min-width: 64px; justify-content: center }
+  .pftable tr.pfdetail { display: block }
+  .pftable tr.pfdetail td { display: block; padding: 0 14px 14px }
+  .pfkv { gap: 10px 20px }
+  .pfkv .pfph { display: flex }
+  .pfkv .pfph-held { display: none }
+
+  /* ---- tables: they scroll sideways in their card, the first column
+     held in place. The columns are the comparison, so rows stay rows. */
+  .tbhd { flex-wrap: wrap; row-gap: 4px; padding: 13px 14px }
+  .tbl > table { display: block; overflow-x: auto }
+  .tbl th, .tbl td { padding-left: 12px; padding-right: 12px; white-space: nowrap }
+  .tbl td:last-child { white-space: normal; min-width: 170px }
+  .tbl > table th:first-child, .tbl > table td:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--card);
+  }
+
+  /* ---- Flow: the phone drawings replace the wide ones ---------------- */
+  .flowcard { padding: 18px 16px 16px; border-radius: 18px }
+  .flowcard > .bxhd { flex-wrap: wrap; row-gap: 4px }
+  .flowcard > svg { display: none !important }
+  .flowphone { display: block }
+  .flowphone svg { display: block; width: 100%; max-width: 400px; margin: 6px auto 0 }
+  .flowlegend { gap: 10px 18px }
+  /* The story above them (F5.8): its heading at the Home hero's phone size,
+     and its three edges one under another. */
+  .storyhead h1 { font-size: 30px }
+  .storyhead p { font-size: 14.5px }
+  .edges { grid-template-columns: minmax(0, 1fr); gap: 10px }
+  .edge { padding: 14px 16px }
+  .sthd { margin-top: 8px; font-size: 18px }
+  .honest { padding: 12px 14px }
+  .storylink { white-space: normal }
+
+  /* ---- self only: the Sniper page ------------------------------------ */
+  .armhero { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 18px }
+  .armhero .divider { display: none }
+  #interlocks { grid-template-columns: minmax(0, 1fr) !important }
+  .dec { flex-direction: column; gap: 8px; padding: 14px }
+  .dec .when { width: auto; display: flex; gap: 8px; align-items: baseline }
+
+  /* ---- modals are bottom sheets --------------------------------------- */
+  .modal {
+    align-items: end;
+    padding: 12px max(12px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  /* Search stays at the top, above the keyboard. */
+  .modal.srback { align-items: start; padding-top: max(12px, env(safe-area-inset-top)) }
+  .srfoot > span:first-child, .srfoot > span:nth-child(2) { display: none }
+  .mbox { max-height: calc(100vh - 24px); overflow-y: auto; padding: 20px 18px }
+  @supports (height: 100dvh) {
+    .mbox { max-height: calc(100dvh - 24px - env(safe-area-inset-bottom)) }
+  }
+  .mbtns { flex-wrap: wrap }
+  .mbtns .btn { flex: 1 1 auto }
+  /* Every sheet as the trading wallet's: a little tighter, and rising from
+     further down, as a bottom sheet does. */
+  .mbox { padding: 18px 16px; translate: 0 calc(var(--rise) * 24px) }
+  .twcard { padding: 14px }
+  .twamt { font-size: 30px }
+  /* The plan sheet's steps (U8): "Step N", the tx link and the status on the
+     first line, the step's words across the whole width under them, so a
+     long label no longer wraps to three lines beside the link and the tag.
+     A step row is the sheet's one row with a pill in it. */
+  .plansheet .wrow:has(> .pill) {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "k . tx st" "v v v v"; column-gap: 8px; row-gap: 3px; align-items: center;
+  }
+  .plansheet .wrow:has(> .pill) > .k { grid-area: k; width: auto }
+  .plansheet .wrow:has(> .pill) > .v { grid-area: v; line-height: 1.45 }
+  .plansheet .wrow:has(> .pill) > .copy { grid-area: tx; margin: -15px -2px -15px 0 }
+  .plansheet .wrow:has(> .pill) > .pill { grid-area: st; margin-left: 0 !important }
+}
+
+/* A narrow phone: the mark and the badge stand for the name, and the wallet
+   button's words ("Log in", "Connect wallet") go without their icon, so the
+   bar stays one row at 320px. The console's wallets chip drops its Lock /
+   Unlock word, which its panel has (and "Locked" is its name when locked),
+   so the wallets and their balance keep the room. */
+@media (max-width: 520px) {
+  .logo .lname b { display: none }
+  .top .whoami.out .av { display: none }
+  .top .whoami.out { padding: 0 14px }
+  #whoami .lk { display: none }
+}

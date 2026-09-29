@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>cumAI · Clank Uwu Model</title>
+<meta name="description" content="cumAI, by cumLabs: a free AI playground for chat and pictures, signed in with your wallet, and one OpenAI-compatible API for AI models from every major lab.">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/landing/landing.css">
+<link rel="stylesheet" href="/ai/ai.css">
+<script type="module" src="/ai/ai.js"></script>
+</head>
+<body class="cai-doc">
+<!-- cumAI at /ai as the demo's console (stage C, C5; C-D8, C-D9, C-D11), from
+     the approved demo's main.cai (design/landing-demo/ai.html). The Build
+     group only; the Next and Roadmap panels stay hidden until their stages
+     ship. The demo sets the look, and every word follows the specs and the
+     live gateway. -->
+<main class="cai" id="cai">
+  <header class="cai-top">
+    <a class="cai-brand" href="#/playground" aria-label="cumAI, Playground"><img class="cai-mark" src="/apple-touch-icon.png" alt="" width="24" height="24"><b class="nm">cumAI</b><small>by <span class="nm">cumLabs</span></small></a>
+    <button class="cai-cmdk" type="button" id="cmdk-open" aria-haspopup="dialog"><span aria-hidden="true">⌕</span><span class="cai-cmdk-t">Search models, docs, actions</span><kbd>Ctrl K</kbd></button>
+    <div class="cai-chips">
+      <span class="cai-chip amber" id="hdr-free" title="Today's free allowance" hidden><i></i>FREE <b class="num" id="hdr-free-v"></b></span>
+      <span class="cai-chip wallet" id="hdr-wallet" title="Signed in to the playground" hidden><i></i><b id="hdr-wallet-v"></b></span>
+      <a class="cai-chip link" href="/" title="Back to the Clank Uwu Model landing page">Clank Uwu Model ↗</a>
+    </div>
+  </header>
+
+  <nav class="cai-side" aria-label="cumAI">
+    <div class="cai-side-g">
+      <span class="cai-side-h">Build</span>
+      <a href="#/playground" data-ai-tab="playground"><span>Playground</span><kbd>P</kbd></a>
+      <a href="#/models" data-ai-tab="models"><span>Models</span><em class="num" id="side-count"></em></a>
+      <a href="#/docs" data-ai-tab="docs"><span>Docs</span><kbd>D</kbd></a>
+      <a href="#/status" data-ai-tab="status"><span>Status</span><em class="cai-st-side"><i class="cai-sdot" id="side-st"></i></em></a>
+    </div>
+    <div class="cai-side-status" aria-label="Status">
+      <div><i id="st-gateway-dot" class="g"></i>gateway<b id="st-gateway">…</b></div>
+      <div><i id="st-play-dot" class="a"></i>playground<b id="st-play">…</b></div>
+      <div><i class="a"></i>paid keys<b>next</b></div>
+    </div>
+    <p class="cai-legal">Beta. Not financial advice. Not affiliated with clank.trade. <a href="/trade#/learn/terms">Terms</a> · <a href="/trade">cumTrade</a> · <a href="https://t.me/clankuwu" target="_blank" rel="noopener noreferrer">Telegram</a><br>Release <span class="mo" id="release">local</span></p>
+  </nav>
+
+  <section class="cai-main" id="cai-main">
+    <div class="cai-host-mini"><img data-host-img="mini" src="/art/e10-sleepy.webp" alt="" width="1024" height="1024"><p><span class="cai-host-who">clankchan · host</span><span data-host-line>Checking whether the playground's open.</span></p></div>
+
+    <!-- Playground (X20 A8, A9; C-D3 to C-D5): drawn by playground.js for each state. -->
+    <div class="cai-panel cai-pgx" data-ai-panel="playground">
+      <div class="cai-pgbar">
+        <button class="cai-msel" type="button" id="pg-model" title="Browse the models"><span class="ai-av" id="pg-model-av">·</span><span><b id="pg-model-id">The free model</b><small id="pg-model-sub">—</small></span><span aria-hidden="true">▾</span></button>
+        <div class="ai-seg cai-mode" id="pg-mode" role="group" aria-label="Text or picture" hidden></div>
+        <span class="cai-pgleft num" id="pg-left" hidden></span>
+        <span class="cai-pgwho"><span id="pg-who"></span><button class="cai-small-btn" type="button" id="pg-out" hidden>Sign out</button></span>
+        <button class="cai-small-btn" type="button" id="pg-new" hidden>New chat</button>
+      </div>
+      <div class="cai-pgbody" id="pg-body" aria-live="polite"></div>
+    </div>
+
+    <!-- Models (X20 A10): read from the gateway once per visit. -->
+    <div class="cai-panel" data-ai-panel="models" hidden>
+      <div class="ai-tiles" id="ai-tiles" hidden></div>
+      <div class="ai-mtools">
+        <label class="ai-search" for="ai-q"><span aria-hidden="true">⌕</span><span class="sr">Search models</span><input id="ai-q" type="search" placeholder="Search the models" autocomplete="off"></label>
+        <div class="ai-seg" id="ai-quick" role="group" aria-label="Quick filters"></div>
+        <span class="ai-count" id="ai-count"></span>
+      </div>
+      <div class="ai-fams" id="ai-fams" role="group" aria-label="Makers"></div>
+      <div class="ai-tablewrap">
+        <div class="ai-tblx">
+          <table class="ai-mtable" id="ai-all">
+            <thead><tr>
+              <th><button type="button" data-ai-sort="id">Model</button></th>
+              <th>Status</th>
+              <th class="r"><button type="button" data-ai-sort="in">Input $/M</button></th>
+              <th class="r"><button type="button" data-ai-sort="out">Output $/M</button></th>
+              <th class="r"><button type="button" data-ai-sort="ctx">Context</button></th>
+              <th class="r">Max output</th>
+              <th><span class="sr">Details</span></th>
+            </tr></thead>
+            <tbody id="ai-rows"><tr><td colspan="7" class="ai-empty">Loading the models…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="ai-fine">Per million tokens, charged per call to the millionth of a dollar. Bars are on a log scale. Read from the live gateway as this page loaded. Paid keys arrive with deposits, next.</p>
+      <!-- Picture models (X15c): shown only while the gateway lists them. -->
+      <section class="ai-pics" id="ai-pics" aria-labelledby="ai-pics-h" hidden>
+        <h3 id="ai-pics-h">Picture models</h3>
+        <div class="ai-tablewrap"><div class="ai-tblx">
+          <table class="ai-mtable">
+            <thead><tr><th>Model</th><th class="r">Price per picture</th></tr></thead>
+            <tbody id="ai-pic-rows"></tbody>
+          </table>
+        </div></div>
+        <p class="ai-fine">One price a picture, whatever its shape; a size (1K, 2K, 4K) where the model offers several. Checked before it is shown, and charged when it is made.</p>
+      </section>
+      <p class="cai-xnote" role="note"><b>There is no xCUM token yet.</b> When there is, its one real address will be posted on this page. Any token called xCUM today is not ours.</p>
+    </div>
+
+    <!-- Status (C5b; C-D10): only what GET /v1/status says, and nothing made up. -->
+    <div class="cai-panel" data-ai-panel="status" hidden>
+      <p class="cai-stnote" id="st-note"></p>
+      <div class="cai-st-head">
+        <div class="cai-st-big" id="st-big"></div>
+        <div class="cai-st-svc" id="st-svc"></div>
+      </div>
+      <div class="ai-tablewrap cai-st-inc">
+        <div class="cai-st-inc-h"><h3>Incidents</h3><span class="cai-mono-s">last 24 hours</span></div>
+        <div id="st-incidents"></div>
+      </div>
+      <div class="ai-mtools">
+        <div class="ai-seg" id="st-filter" role="group" aria-label="Filter by status"></div>
+        <span class="ai-count" id="st-count"></span>
+      </div>
+      <div class="ai-tablewrap">
+        <div class="ai-tblx">
+          <table class="ai-mtable" id="st-table">
+            <thead><tr><th>Model</th><th>Status</th><th class="r">First token</th><th class="r">Speed</th><th class="r">Checked</th></tr></thead>
+            <tbody id="st-rows"><tr><td colspan="5" class="ai-empty">Loading the status…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="ai-fine">First token: the median time until the first word arrives. Speed: the median tokens a second of whole answers. Both from real calls and scheduled checks, where there are any.</p>
+    </div>
+
+    <!-- Docs (X20 A11): a quickstart, then the reference, as 01a03e1 checked it. -->
+    <div class="cai-panel" data-ai-panel="docs" hidden>
+      <div class="ai-dbody">
+        <section class="ai-dsec" id="d-intro">
+          <div class="ai-dprose"><h2>Introduction</h2><p>cumAI is an OpenAI-compatible gateway to <span data-ai-count="{n} chat models">chat models from every major lab</span>. If your code already talks to OpenAI, point it at the base URL and pick a model. Nothing else changes.</p><p>Every call is priced per token and charged to the millionth of a dollar, and every answer says what it cost.</p></div>
+          <div class="ai-code"><div class="ai-code-cap">Base URL</div><pre>https://api.clankuwu.com/v1</pre></div>
+        </section>
+        <section class="ai-dsec" id="d-auth">
+          <div class="ai-dprose"><h2>Authentication <span class="ai-pill-next">Keys arrive with deposits</span></h2><p>Send your key as a bearer token. Keys start with <code class="i">cum-live-</code>. We keep only a SHA-256 hash of each key, so it can't be shown to you again: store it when you create it.</p><p>A missing, malformed, unknown or revoked key is refused with a <code class="i">401</code>.</p></div>
+          <div class="ai-code"><div class="ai-code-cap">Header</div><pre>Authorization: Bearer cum-live-…</pre></div>
+        </section>
+        <section class="ai-dsec" id="d-quick">
+          <div class="ai-dprose"><h2>Quickstart</h2><p>One call with curl. Swap the model for any id from <a href="#/models" class="ai-lnk">Models</a>.</p></div>
+          <div class="ai-code"><div class="ai-code-cap">Request</div><pre><span class="f">curl</span> https://api.clankuwu.com/v1/chat/completions \
+  -H <span class="s">"Authorization: Bearer $CUM_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"model": "gpt-5-mini",
+ "messages": [{"role": "user", "content": "Hello"}]}'</span></pre></div>
+        </section>
+        <section class="ai-dsec" id="d-stream">
+          <div class="ai-dprose"><h2>Streaming</h2><p>Set <code class="i">"stream": true</code> and the answer arrives as server-sent events, chunk by chunk, ending with <code class="i">[DONE]</code>.</p><p>If you close the stream early, you are charged for what was delivered, not for the whole answer.</p></div>
+          <div class="ai-code"><div class="ai-code-cap">Events</div><pre><span class="c">data:</span> {<span class="s">"choices"</span>:[{<span class="s">"delta"</span>:{<span class="s">"content"</span>:<span class="s">"Hel"</span>}}]}
+<span class="c">data:</span> {<span class="s">"choices"</span>:[{<span class="s">"delta"</span>:{<span class="s">"content"</span>:<span class="s">"lo"</span>}}]}
+<span class="c">data:</span> [DONE]</pre></div>
+        </section>
+        <section class="ai-dsec" id="d-sdk">
+          <div class="ai-dprose"><h2>OpenAI SDKs</h2><p>The official Python and JavaScript SDKs work as they are. Change the base URL and the key, and keep the rest of your code.</p></div>
+          <div class="ai-code" data-ai-codeset>
+            <div class="ai-code-tabs" role="tablist" aria-label="Language">
+              <button role="tab" type="button" aria-selected="true" data-ai-lang="py">Python</button>
+              <button role="tab" type="button" aria-selected="false" data-ai-lang="js">JavaScript</button>
+              <button class="ai-small-btn ai-copy" type="button" data-ai-copy>Copy</button>
+            </div>
+<pre data-ai-lang="py"><span class="k">from</span> openai <span class="k">import</span> OpenAI
+
+client = OpenAI(
+    base_url=<span class="s">"https://api.clankuwu.com/v1"</span>,
+    api_key=os.environ[<span class="s">"CUM_KEY"</span>],
+)
+reply = client.chat.completions.create(
+    model=<span class="s">"claude-sonnet-5"</span>,
+    messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"Hello"</span>}],
+)</pre>
+<pre data-ai-lang="js" hidden><span class="k">import</span> OpenAI <span class="k">from</span> <span class="s">"openai"</span>;
+
+<span class="k">const</span> client = <span class="k">new</span> OpenAI({
+  baseURL: <span class="s">"https://api.clankuwu.com/v1"</span>,
+  apiKey: process.env.CUM_KEY,
+});
+<span class="k">const</span> reply = <span class="k">await</span> client.chat.completions.create({
+  model: <span class="s">"claude-sonnet-5"</span>,
+  messages: [{ role: <span class="s">"user"</span>, content: <span class="s">"Hello"</span> }],
+});</pre>
+          </div>
+        </section>
+        <section class="ai-dsec" id="d-chat">
+          <div class="ai-dprose"><h2>Chat completions <code class="ai-verb">POST /v1/chat/completions</code></h2>
+            <table class="ai-ptable">
+              <tr><td><code>model</code><small>string · required</small></td><td>Any id from <a href="#/models" class="ai-lnk">Models</a>.</td></tr>
+              <tr><td><code>messages</code><small>array · required</small></td><td>The conversation, in OpenAI's shape.</td></tr>
+              <tr><td><code>stream</code><small>boolean</small></td><td>Send the answer as events. See Streaming.</td></tr>
+              <tr><td><code>max_tokens</code><small>integer</small></td><td>Or <code>max_completion_tokens</code>: send either one. We forward it as the one that model honours, never both. Where a model's entry says <code>"output_cap": "honoured"</code>, your cap holds (its own limit if you send none). Where it says <code>"held_at_model_limit"</code>, the model's own limit holds whatever you ask.</td></tr>
+              <tr><td><code>tools</code>, <code>tool_choice</code>, <code>response_format</code></td><td>Passed to the model. They count toward the input, and their text is moderated like the prompt.</td></tr>
+            </table>
+          </div>
+          <div class="ai-code"><div class="ai-code-cap">Request body</div><pre>{
+  <span class="s">"model"</span>: <span class="s">"deepseek-v4-pro"</span>,
+  <span class="s">"messages"</span>: [
+    {<span class="s">"role"</span>: <span class="s">"system"</span>, <span class="s">"content"</span>: <span class="s">"Be brief."</span>},
+    {<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"Hello"</span>}
+  ],
+  <span class="s">"max_tokens"</span>: <span class="k">400</span>,
+  <span class="s">"stream"</span>: <span class="k">true</span>
+}</pre></div>
+        </section>
+        <section class="ai-dsec" id="d-models">
+          <div class="ai-dprose"><h2>List models <code class="ai-verb">GET /v1/models</code></h2><p>Every model with its prices per million tokens and, where the maker publishes them, its context length and output limit. The same list as the Models tab. No key needed.</p></div>
+          <div class="ai-code"><div class="ai-code-cap">One entry</div><pre>{
+  <span class="s">"id"</span>: <span class="s">"claude-sonnet-5"</span>,
+  <span class="s">"object"</span>: <span class="s">"model"</span>,
+  <span class="s">"owned_by"</span>: <span class="s">"cumlabs"</span>,
+  <span class="s">"pricing"</span>: {
+    <span class="s">"input_usd_per_million"</span>: <span class="k">1.9</span>,
+    <span class="s">"output_usd_per_million"</span>: <span class="k">9.5</span>
+  },
+  <span class="s">"context_length"</span>: <span class="k">1000000</span>,
+  <span class="s">"max_output_tokens"</span>: <span class="k">128000</span>,
+  <span class="s">"output_cap"</span>: <span class="s">"honoured"</span>
+}</pre></div>
+        </section>
+        <section class="ai-dsec one" id="d-headers">
+          <div class="ai-dprose"><h2>Response headers</h2>
+            <table class="ai-ptable">
+              <tr><td><code>x-cum-cost-usd</code></td><td>What this call was charged, in dollars.</td></tr>
+              <tr><td><code>x-cum-request-id</code></td><td>The call's id. Quote it when you report a problem.</td></tr>
+              <tr><td><code>x-cum-balance-usd</code></td><td>On keyed calls: your balance after this call.</td></tr>
+              <tr><td><code>x-cum-free-left-usd</code></td><td>On free calls: what is left of today's allowance.</td></tr>
+              <tr><td><code>retry-after</code></td><td>On a 429: seconds to wait before trying again.</td></tr>
+            </table>
+          </div>
+        </section>
+        <section class="ai-dsec one" id="d-errors">
+          <div class="ai-dprose"><h2>Errors</h2><p>Errors come back in OpenAI's shape: <code class="i">{"error": {"type", "code", "message"}}</code>. Switch on the code.</p>
+            <div class="ai-tblx"><table class="ai-ptable ai-etable">
+              <thead><tr><th>Status</th><th>Code</th><th>What happened</th></tr></thead>
+              <tbody>
+              <tr><td><span class="ai-st s4">400</span></td><td><code>bad_request</code></td><td>The request is malformed: no model or messages, an image or audio part (only text is accepted), <code>n</code> other than 1, a <code>stream</code> that isn't true or false, a <code>max_tokens</code> that isn't a whole number, a body that isn't JSON, or a key in the URL.</td></tr>
+              <tr><td><span class="ai-st s4">400</span></td><td><code>content_blocked</code></td><td>The prompt broke the content policy and was not sent.</td></tr>
+              <tr><td><span class="ai-st s4">400</span></td><td><code>looks_like_recovery_phrase</code></td><td>The prompt looked like a wallet's recovery phrase, so it was not sent.</td></tr>
+              <tr><td><span class="ai-st s4">400</span></td><td><code>upstream_rejected</code></td><td>The model's provider refused the request as sent.</td></tr>
+              <tr><td><span class="ai-st s4">401</span></td><td><code>missing_key</code> · <code>malformed_key</code> · <code>unknown_key</code> · <code>key_revoked</code></td><td>No key, one that isn't a key's shape, a key we don't know, or one that was revoked.</td></tr>
+              <tr><td><span class="ai-st s4">402</span></td><td><code>insufficient_balance</code></td><td>The balance doesn't cover this call's worst case.</td></tr>
+              <tr><td><span class="ai-st s4">403</span></td><td><code>refused</code></td><td>This account can't make calls.</td></tr>
+              <tr><td><span class="ai-st s4">404</span></td><td><code>unknown_model</code></td><td>No model by that id. See List models.</td></tr>
+              <tr><td><span class="ai-st s4">409</span></td><td><code>unpriced_model</code> · <code>model_not_capped</code></td><td>Rare: that model has no price or no output limit yet, so it can't be called.</td></tr>
+              <tr><td><span class="ai-st s4">413</span></td><td><code>body_too_large</code></td><td>The request body is over 1 MiB.</td></tr>
+              <tr><td><span class="ai-st s4">429</span></td><td><code>rate_limited</code></td><td>Too many requests from one address, or this key already has 4 calls open. Wait for <code>retry-after</code>.</td></tr>
+              <tr><td><span class="ai-st s4">429</span></td><td><code>key_cooling_down</code></td><td>This key's prompts were refused too often today. It can call again later.</td></tr>
+              <tr><td><span class="ai-st s4">429</span></td><td><code>upstream_rate_limited</code></td><td>The provider is rate-limiting. Wait for <code>retry-after</code>.</td></tr>
+              <tr><td><span class="ai-st s5">502</span></td><td><code>upstream_error</code></td><td>The provider answered with an error.</td></tr>
+              <tr><td><span class="ai-st s5">503</span></td><td><code>model_unavailable</code> · <code>upstream_unavailable</code></td><td>The model or its provider is down right now.</td></tr>
+              <tr><td><span class="ai-st s5">503</span></td><td><code>price_book_stale</code></td><td>Prices are being refreshed. Try again shortly.</td></tr>
+              <tr><td><span class="ai-st s5">503</span></td><td><code>moderation_unavailable</code></td><td>Prompts can't be checked right now, so none are sent.</td></tr>
+              <tr><td><span class="ai-st s5">504</span></td><td><code>upstream_timeout</code></td><td>The provider took too long to answer.</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+        </section>
+        <section class="ai-dsec one" id="d-limits">
+          <div class="ai-dprose"><h2>Limits</h2>
+            <table class="ai-ptable">
+              <tr><td>Request body</td><td>1 MiB with a key. 64 KiB on the free tier.</td></tr>
+              <tr><td>Requests</td><td>120 a minute per client address, in bursts of up to 30, across every route. An IPv6 /64 counts as one address.</td></tr>
+              <tr><td>Calls open</td><td>At most 4 at once per key.</td></tr>
+              <tr><td>Free tier</td><td>One reply at a time per address, up to 8,000 tokens in and 1,024 out, from a daily allowance.</td></tr>
+              <tr><td>Output</td><td>Never past the model's own output limit.</td></tr>
+            </table>
+          </div>
+        </section>
+        <section class="ai-dsec one" id="d-index">
+          <div class="ai-dprose"><h2>Data</h2><p>The free data API behind cumTrade (token checks, trades, holders, creator records) is documented on cumTrade, under <a href="/trade#/learn/api" class="ai-lnk">Learn</a>.</p></div>
+        </section>
+      </div>
+      <p class="cai-legal wide">Beta. Not financial advice. Not affiliated with clank.trade. <a href="/trade#/learn/terms">Terms</a> · <a href="/trade">cumTrade</a> · <a href="https://t.me/clankuwu" target="_blank" rel="noopener noreferrer">Telegram</a> · <a href="/">Home</a></p>
+    </div>
+  </section>
+
+  <aside class="cai-insp" aria-label="Inspector">
+    <div class="cai-host">
+      <div class="cai-host-face"><img data-host-img="big" src="/art/e10-sleepy.webp" alt="clankchan, sleepy" width="1024" height="1024"></div>
+      <div class="cai-host-say"><span class="cai-host-who">clankchan · host</span><p data-host-line>Checking whether the playground's open.</p></div>
+    </div>
+    <div class="cai-insp-body" id="cai-insp-body"></div>
+  </aside>
+</main>
+
+<!-- The command palette (Ctrl K). -->
+<div class="cai-scrim" id="pal-scrim" hidden></div>
+<div class="cai-pal" id="pal" role="dialog" aria-modal="true" aria-label="Command palette" hidden>
+  <div class="cai-pal-in"><span aria-hidden="true">⌕</span><label for="pal-q" class="sr">Search</label><input id="pal-q" type="text" placeholder="Type a model, a maker, a page or an action" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="pal-list"><kbd>Esc</kbd></div>
+  <div class="cai-pal-list" id="pal-list" role="listbox"></div>
+  <div class="cai-pal-foot" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>
+</div>
+
+<!-- A model's details, on screens without the inspector. -->
+<div class="ai-scrim" id="ai-scrim" hidden></div>
+<aside class="ai-drawer" id="ai-drawer" role="dialog" aria-modal="true" aria-labelledby="ai-dr-title" hidden></aside>
+</body>
+</html>

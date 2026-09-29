@@ -1,0 +1,11 @@
+# Deploy files run on Linux: a CRLF in a shell script or unit file breaks it.
+*.sh text eol=lf
+deploy/** text eol=lf
+
+# Downloaded files pinned by SHA-256 in SOURCES.txt: never convert line endings.
+src/web/public/fonts/* -text
+
+# The vendored SDK, pinned by its SHA-256 and rebuilt byte for byte (W1.1),
+# and the facade it is built from, so every checkout builds the same bytes.
+src/web/public/vendor/* -text
+scripts/vendor/* text eol=lf

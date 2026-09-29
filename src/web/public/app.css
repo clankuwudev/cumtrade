@@ -1,0 +1,1938 @@
+/* ---------------------------------------------------------------------------
+ * clankbot console — design system.
+ *
+ * The first two sections are design/app.css and design/sort.css copied
+ * verbatim: together they are exactly the <style> block every artboard on the
+ * published canvas shares. Keep them byte-identical so the canvas stays the
+ * source of truth and a redesign is a re-copy, not a merge.
+ *
+ *   cat design/app.css design/sort.css   ==   everything above RUNTIME below
+ *
+ * Runtime-only additions live in the appendix at the bottom: page routing,
+ * toasts, the unlock modal, empty states, narrow-window fallback. A static
+ * artboard has no need of any of them. Nothing there redefines a token or
+ * restyles a designed component.
+ *
+ * The redesign (docs/specs/public/u-redesign.md, U0) adds its tokens to :root
+ * beside the canvas's colours, which stay as they are: they are the brand. Its
+ * shared components are the SHARED COMPONENTS section at the bottom.
+ * ------------------------------------------------------------------------- */
+
+  :root{
+    --bg:#09090b; --side:#0b0b0d; --card:#141417; --card2:#1a1a1e; --card3:#202026;
+    --line:#26262c; --line2:#1c1c21;
+    --tx:#f2f2f4; --tx2:#a2a2aa; --tx3:#6d6d77; --tx4:#4a4a52;
+    --acc:#6ea8ff; --grn:#3fd68c; --red:#ff5f57; --amb:#ffb340; --vio:#a78bfa;
+    --ui:'Schibsted Grotesk','Helvetica Neue',Arial,sans-serif;
+    --mo:'JetBrains Mono',ui-monospace,Consolas,monospace;
+    /* The redesign's tokens (U0). --hover is the demo's row hover; nothing on
+       the canvas used it, so no existing element changes colour. The demo's
+       --card is a shade darker than the canvas's and is not taken. */
+    --hover:#1a1a1f;
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
+    --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:18px; --r-pill:999px;
+    --fs-11:11px; --fs-12:12px; --fs-13:13px; --fs-14:14px; --fs-16:16px; --fs-20:20px; --fs-28:28px; --fs-34:34px;
+    --shadow-1:0 12px 30px rgba(0,0,0,.45);
+    --shadow-2:0 24px 64px -12px rgba(0,0,0,.7);
+    --ring:2px solid var(--acc);
+    --ring-field:0 0 0 3px rgba(110,168,255,.12);
+    /* A sheet's rise, 1 as it opens and 0 once it is up (the .modal rules). */
+    --rise:0;
+  }
+  *{box-sizing:border-box}
+  /* No tabular figures (2026-09-23): Schibsted Grotesk's tabular set widens
+     . , : and ; to a digit's width, so text read "clank . trade", "0 . 8842". */
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font:14px/1.55 var(--ui);
+    -webkit-font-smoothing:antialiased}
+  a{color:var(--tx2);text-decoration:none}
+  a:hover{color:var(--tx)}
+  .sp{flex:1}
+  .grn{color:var(--grn)} .red{color:var(--red)} .amb{color:var(--amb)}
+  .t2{color:var(--tx2)} .t3{color:var(--tx3)} .t4{color:var(--tx4)}
+  .mo{font-family:var(--mo);font-size:12px;letter-spacing:-.2px}
+
+  /* ---------------- shell ----------------
+     The canvas's sidebar and its nav went with U1 (u-redesign.md): the frame
+     is the top bar, in the FRAME section at the foot of this file. */
+  .armcard{border-radius:13px;padding:13px;background:var(--card);
+    border:1px solid var(--line2)}
+  .armcard.armed{background:rgba(255,95,87,.09);border-color:rgba(255,95,87,.4)}
+  .armrow{display:flex;align-items:center;gap:9px}
+  .armrow b{font-size:13.5px;font-weight:600}
+  .armcard.armed .armrow b{color:var(--red)}
+  .armcard p{margin:7px 0 0;font-size:11px;color:var(--tx3);line-height:1.5}
+  .armcard.safe .armedonly,.armcard.armed .safeonly{display:none}
+  .sw{width:36px;height:20px;border-radius:999px;background:var(--card3);position:relative;
+    cursor:pointer;flex:none;margin-left:auto;border:1px solid var(--line)}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;
+    border-radius:50%;background:var(--tx3);transition:left .15s ease,background .15s ease}
+  .armcard.armed .sw{background:rgba(255,95,87,.3);border-color:rgba(255,95,87,.55)}
+  .armcard.armed .sw::after{left:18px;background:var(--red)}
+  /* The system switch (docs/specs/system-switch.md). A real button, so Tab
+     reaches it and Space or Enter flips it. */
+  .syscard{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+    border-radius:13px;padding:11px 13px;background:var(--card);border:1px solid var(--line2);
+    color:var(--tx);font:inherit;cursor:pointer}
+  .syscard:hover{border-color:var(--line)}
+  .syscard:focus-visible,.sysoff .btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  .syscard:disabled{cursor:progress;opacity:.6}
+  .syscard b{font-size:13.5px;font-weight:600;display:block;line-height:1.2}
+  .syscard b + span{font-size:10.5px;color:var(--tx3);display:block;margin-top:2px}
+  .syscard.on .sw{background:rgba(63,214,140,.25);border-color:rgba(63,214,140,.5)}
+  .syscard.on .sw::after{left:18px;background:var(--grn)}
+  .sysoff{display:flex;align-items:center;gap:12px;margin:14px 22px 0;padding:11px 14px;
+    border-radius:13px;background:var(--card);border:1px solid var(--line);font-size:13px;color:var(--tx2)}
+  .sysoff b{color:var(--tx);font-weight:600}
+  .sysoff .btn{padding:7px 14px;font-size:12.5px;flex:none}
+  .sysoff[hidden]{display:none}
+  .whoami{display:flex;align-items:center;gap:10px;padding:8px}
+  .av{width:28px;height:28px;border-radius:9px;background:var(--card3);flex:none;
+    display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--tx2)}
+  .whoami b{font-size:12.5px;font-weight:600;display:block;line-height:1.2}
+  .whoami span{font-size:10.5px;color:var(--tx3);display:block}
+
+  /* ---------------- topbar ---------------- */
+  .main{min-width:0;display:flex;flex-direction:column}
+  .search{flex:1;max-width:520px;display:flex;align-items:center;gap:10px;
+    background:var(--card);border:1px solid var(--line);border-radius:999px;padding:9px 17px}
+  .search input{flex:1;background:none;border:none;outline:none;color:var(--tx);
+    font:inherit;font-size:13px}
+  .search input::placeholder{color:var(--tx4)}
+  .search:focus-within{border-color:var(--acc);box-shadow:0 0 0 3px rgba(110,168,255,.12)}
+  .btn{border-radius:999px;padding:9px 17px;font:inherit;font-size:13px;font-weight:600;
+    border:1px solid var(--line);background:var(--card);color:var(--tx);cursor:pointer}
+  .btn:hover{background:var(--card2);border-color:var(--line)}
+  .btn.pri{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+  .btn.pri:hover{background:#fff}
+  .btn.sm{padding:7px 13px;font-size:12px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--grn);flex:none;
+    box-shadow:0 0 0 3px rgba(63,214,140,.16)}
+  .dot.a{background:var(--amb);box-shadow:0 0 0 3px rgba(255,179,64,.16)}
+  .dot.r{background:var(--red);box-shadow:0 0 0 3px rgba(255,95,87,.16)}
+  .dot.n{background:var(--tx4);box-shadow:none}
+
+  /* ---------------- page ---------------- */
+  .page{padding:26px;display:flex;flex-direction:column;gap:18px}
+  .phead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .phead h1{margin:0;font-size:27px;font-weight:700;letter-spacing:-.035em;line-height:1.1}
+  .phead p{margin:5px 0 0;font-size:13px;color:var(--tx3);max-width:560px;line-height:1.5}
+  .chips{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .chip{border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:500;
+    border:1px solid var(--line);background:var(--card);color:var(--tx2);cursor:pointer;
+    user-select:none;display:flex;align-items:center;gap:7px}
+  .chip:hover{color:var(--tx);background:var(--card2)}
+  .chip .n{font-size:11px;color:var(--tx4)}
+  .chiplb{font-size:11px;color:var(--tx4);font-weight:500;padding-right:3px}
+
+  /* ---------------- cards ---------------- */
+  .card{background:var(--card);border:1px solid var(--line2);border-radius:16px}
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+  .stat{background:var(--card);border:1px solid var(--line2);border-radius:16px;
+    padding:17px 19px;min-width:0}
+  .stat .lb{font-size:11.5px;color:var(--tx3);font-weight:500;display:flex;
+    align-items:center;gap:7px}
+  .stat b{display:block;font-size:29px;font-weight:700;letter-spacing:-.04em;
+    margin-top:9px;line-height:1}
+  .stat small{display:block;font-size:11.5px;color:var(--tx3);margin-top:7px}
+  .spark{margin-top:11px;display:block}
+
+  /* rings */
+  .ringwrap{position:relative;flex:none}
+  .ringwrap .mono{position:absolute;inset:0;display:grid;place-items:center;
+    font-weight:700;letter-spacing:-.03em}
+
+  /* ---------------- launch card ---------------- */
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:start}
+  .grid[data-f="CLEAN"] .lc:not([data-b="CLEAN"]),
+  .grid[data-f="CAUTION"] .lc:not([data-b="CAUTION"]),
+  .grid[data-f="risky"] .lc[data-b="CLEAN"],
+  .grid[data-f="risky"] .lc[data-b="CAUTION"],
+  .grid[data-f="risky"] .lc[data-b="SCAN"]{display:none}
+  .lc{background:var(--card);border:1px solid var(--line2);border-radius:16px;padding:17px;
+    display:flex;flex-direction:column;gap:14px;min-width:0}
+  .lc:hover{border-color:var(--line);background:#161619}
+  .lc.bad{border-color:rgba(255,95,87,.34)}
+  .lc.hot{border-color:rgba(255,179,64,.34)}
+  .lchd{display:flex;align-items:center;gap:13px}
+  .lchd .id{min-width:0;flex:1}
+  .lchd .tk{font-size:17px;font-weight:700;letter-spacing:-.025em;line-height:1.2}
+  .lchd .nm{font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap}
+  .bd{font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:4px 10px;
+    border-radius:999px;flex:none;text-transform:uppercase}
+  .bd.CLEAN{background:rgba(63,214,140,.13);color:var(--grn)}
+  .bd.CAUTION{background:rgba(255,179,64,.13);color:var(--amb)}
+  .bd.HIGH{background:rgba(255,95,87,.12);color:#ff8a84}
+  .bd.AVOID{background:var(--red);color:#1a0b0a}
+  .bd.SCAN{background:var(--card3);color:var(--tx3)}
+  .raised{display:flex;align-items:baseline;gap:9px}
+  .raised b{font-size:26px;font-weight:700;letter-spacing:-.04em;line-height:1}
+  .raised span{font-size:12px;color:var(--tx3)}
+  .kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;
+    background:var(--line2);border-radius:11px;overflow:hidden}
+  .kv .c{background:var(--card2);padding:10px 11px;min-width:0}
+  .kv .c i{font-style:normal;font-size:10px;color:var(--tx3);display:block;font-weight:500}
+  .kv .c b{font-size:14px;font-weight:600;letter-spacing:-.02em;display:block;margin-top:3px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kv .c.warn{background:rgba(255,95,87,.1)}
+  .kv .c.near{background:rgba(255,179,64,.09)}
+  .lcft{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--tx3);
+    padding-top:2px}
+  .flag{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;
+    border-radius:10px;padding:9px 11px;line-height:1.35}
+  .flag.red{background:rgba(255,95,87,.11);color:#ff8a84}
+  .flag.amb{background:rgba(255,179,64,.1);color:var(--amb)}
+  .gate{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--tx2)}
+  .gate .tick{width:14px;height:14px;border-radius:50%;background:rgba(63,214,140,.16);
+    position:relative;flex:none}
+  .gate .tick::after{content:"";position:absolute;left:4px;top:6px;width:4px;height:2px;
+    background:var(--grn);transform:rotate(45deg)}
+  .gate .tick::before{content:"";position:absolute;left:6px;top:4px;width:2px;height:7px;
+    background:var(--grn);transform:rotate(45deg)}
+  .gate.no .tick{background:var(--red)}
+  .gate.no .tick::after{background:#fff;left:6px;top:3px;width:2px;height:8px}
+  .gate.no .tick::before{background:#fff;left:6px;top:9px;width:2px;height:2px;transform:none}
+  /* Not known: the sell check could not run (current-issues.md #4). */
+  .gate.unk{color:var(--tx3)}
+  .gate.unk .tick{background:var(--line2)}
+  .gate.unk .tick::after,.gate.unk .tick::before{display:none}
+
+  /* ---------------- spotlight ---------------- */
+  .spot{background:linear-gradient(135deg,#17171b,#121215);border:1px solid var(--line);
+    border-radius:20px;padding:24px;display:grid;
+    grid-template-columns:minmax(0,1.25fr) 1px minmax(0,1fr);gap:24px;align-items:stretch}
+  .spot .divider{background:var(--line2)}
+  .spotl{display:flex;flex-direction:column;gap:17px;min-width:0}
+  .newpill{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--acc);
+    background:rgba(110,168,255,.12);border-radius:999px;padding:5px 11px;width:fit-content}
+  .spot .big{font-size:40px;font-weight:700;letter-spacing:-.045em;line-height:1}
+  .spot .sub{font-size:14px;color:var(--tx2);margin-top:4px}
+  .bar{height:7px;background:var(--card3);border-radius:4px;position:relative;
+    overflow:visible}
+  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--grn)}
+  .bar i.hot{background:var(--amb)}
+  .bar i.bad{background:var(--red)}
+  .bar u{position:absolute;left:95%;top:-4px;bottom:-4px;width:2px;border-radius:1px;
+    background:var(--tx3);text-decoration:none}
+  .barlb{display:flex;justify-content:space-between;font-size:11.5px;color:var(--tx3);
+    margin-top:8px}
+  .spotr{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .frow{display:flex;gap:10px;align-items:flex-start;padding:10px 0;
+    border-bottom:1px solid var(--line2)}
+  .frow:last-child{border-bottom:none}
+  .sv{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:3px 7px;border-radius:6px;
+    flex:none;margin-top:1px}
+  .sv.c{background:var(--red);color:#1a0b0a}
+  .sv.h{background:rgba(255,95,87,.14);color:#ff8a84}
+  .sv.m{background:rgba(255,179,64,.14);color:var(--amb)}
+  .sv.l{background:rgba(110,168,255,.13);color:var(--acc)}
+  .sv.i{background:var(--card3);color:var(--tx3)}
+  .frow b{font-size:12.5px;font-weight:600;display:block;line-height:1.4}
+  .frow p{margin:3px 0 0;font-size:11.5px;color:var(--tx3);line-height:1.5}
+
+  /* ---------------- table ---------------- */
+  .tbl{background:var(--card);border:1px solid var(--line2);border-radius:16px;
+    overflow:hidden}
+  .tbhd{display:flex;align-items:center;gap:12px;padding:15px 19px;
+    border-bottom:1px solid var(--line2)}
+  .tbhd h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.02em}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--tx4);padding:10px 19px;
+    border-bottom:1px solid var(--line2)}
+  td{padding:13px 19px;border-bottom:1px solid var(--line2);font-size:13px}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:var(--card2)}
+  .rt{text-align:right}
+  td .tk2{font-weight:600;font-size:13.5px}
+  td .sub2{font-size:11px;color:var(--tx3);display:block;margin-top:2px}
+  .pill{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:999px;
+    display:inline-block}
+  .pill.g{background:rgba(63,214,140,.13);color:var(--grn)}
+  .pill.r{background:rgba(255,95,87,.12);color:#ff8a84}
+  .pill.a{background:rgba(255,179,64,.13);color:var(--amb)}
+  .pill.b{background:rgba(110,168,255,.12);color:var(--acc)}
+  .pill.n{background:var(--card3);color:var(--tx3)}
+  /* The track record (docs/specs/track-record.md). */
+  .tbl.rec{margin-top:18px}
+  .tbl.rec .tbhd{flex-wrap:wrap}
+  .tbl.rec .tbhd .btn{padding:6px 13px;font-size:12px}
+  .recstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:14px 19px;
+    border-bottom:1px solid var(--line2)}
+  .recstats .stat{padding:12px 14px;border-radius:12px}
+  .recstats .stat b{font-size:21px}
+  .recscroll{overflow-x:auto}
+  .recscroll table{min-width:820px}
+  .recscroll td.rt{white-space:nowrap}
+  .recscroll td .mo{white-space:nowrap}
+  .recnote{margin:0;padding:13px 19px;font-size:11.5px;color:var(--tx3);line-height:1.6}
+  .shr{margin-left:6px;border:1px solid var(--line);background:transparent;color:var(--tx3);border-radius:999px;
+    padding:2px 9px;font:inherit;font-size:10.5px;font-weight:600;cursor:pointer}
+  .shr:hover{color:var(--tx);border-color:var(--tx3)}
+  .shr:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  /* The share dialog (docs/specs/share-cards.md), one of the sheet family
+     since U8: its head, the style and shape as segmented controls, the sound
+     and clankchan's reactions as U0 chips, the status over the actions. */
+  .mbox.sharebox{width:min(620px,100%);max-height:calc(100vh - 40px);overflow:auto}
+  .sharecv{display:grid;place-items:center}
+  .sharecv canvas{display:block;max-width:100%;max-height:62vh;width:auto;height:auto;border-radius:12px;
+    border:1px solid var(--line2);background:var(--bg);cursor:pointer}
+  .sharemodes{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .sharemodes [hidden]{display:none}
+  .sharemodes .seg > button:disabled{opacity:.4;cursor:not-allowed}
+  .sharemodes .seg > button:disabled:hover{color:var(--tx3)}
+  .sharechips .chip:disabled{opacity:.4;cursor:not-allowed}
+  .sharechips{display:flex;flex-wrap:wrap;gap:6px}
+  .sharechips .chip{font-size:12px;padding:5px 11px}
+  .mbox p.sharestat{font-size:12px;color:var(--tx2)}
+  .mbox p.sharestat:empty{display:none}
+  .grid[data-s="new"] .lc{order:var(--o-new)}
+  .grid[data-s="prog"] .lc{order:var(--o-prog)}
+  .grid[data-s="score"] .lc{order:var(--o-score)}
+  .btn{white-space:nowrap}
+  /* config rows */
+  .cfgrow{display:flex;align-items:center;gap:10px;padding:9px 0;
+    border-bottom:1px solid var(--line2)}
+  .cfgrow:last-child{border-bottom:none}
+  .cfgrow .k{font-family:var(--mo);font-size:11.5px;color:var(--tx2);letter-spacing:-.2px}
+  .cfgrow .d{margin-left:auto;font-size:10.5px;color:var(--tx4)}
+  .cfgrow .v{font-size:14.5px;font-weight:600;min-width:54px;text-align:right;
+    letter-spacing:-.02em}
+  .cfgrow.mod .v{color:var(--acc)}
+  .cardpad{padding:18px 20px}
+  .cardhd{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .cardhd h3{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.02em}
+  .cardhd .tag{margin-left:auto;font-size:10.5px;font-weight:600;padding:3px 9px;
+    border-radius:999px;background:var(--card3);color:var(--tx3)}
+  .cardnote{font-size:11.5px;color:var(--tx3);line-height:1.55;margin:10px 0 0}
+
+  /* arming hero */
+  .armhero{padding:24px;display:grid;
+    grid-template-columns:minmax(0,1.25fr) 1px minmax(0,1fr) auto;gap:24px;
+    align-items:center;border-radius:20px}
+  .armhero.armed{background:linear-gradient(135deg,rgba(255,95,87,.11),rgba(255,95,87,.02));
+    border-color:rgba(255,95,87,.4)}
+  .armhero .divider{background:var(--line2);align-self:stretch}
+  .ahtitle{font-size:30px;font-weight:700;letter-spacing:-.04em;line-height:1}
+  .armhero.armed .ahtitle{color:var(--red)}
+  .armhero p{margin:9px 0 0;font-size:12.5px;color:var(--tx3);line-height:1.55;max-width:420px}
+  .armhero.safe .armedonly,.armhero.armed .safeonly{display:none}
+  .sw.lg{width:52px;height:29px;margin:0}
+  .sw.lg::after{width:21px;height:21px}
+  .armhero.armed .sw.lg::after{left:28px}
+  .mtr{height:5px;background:var(--card3);border-radius:3px;overflow:hidden;margin-top:8px}
+  .mtr i{display:block;height:100%;border-radius:3px;background:var(--tx2)}
+  .mtr i.full{background:var(--amb)}
+
+  /* interlocks */
+  .ilk{display:flex;gap:11px;align-items:flex-start;padding:11px 0;
+    border-bottom:1px solid var(--line2);font-size:12.5px;color:var(--tx2);line-height:1.5}
+  .ilk:last-child{border-bottom:none}
+  .ilk em{font-style:normal;display:block;font-size:11.5px;color:var(--tx4);margin-top:3px}
+  .lock{width:16px;height:16px;border-radius:5px;background:var(--card3);flex:none;
+    margin-top:2px;position:relative}
+  .lock::before{content:"";position:absolute;left:5px;top:3px;width:6px;height:5px;
+    border:1.5px solid var(--tx3);border-bottom:none;border-radius:3px 3px 0 0}
+  .lock::after{content:"";position:absolute;left:4px;top:7px;width:8px;height:6px;
+    background:var(--tx3);border-radius:2px}
+
+  /* decision feed */
+  .dec{display:flex;gap:15px;padding:17px 19px;border-bottom:1px solid var(--line2)}
+  .dec:last-child{border-bottom:none}
+  .dec .when{width:98px;flex:none}
+  .dec .when b{display:block;color:var(--tx2);font-weight:600;font-size:13px}
+  .dec .when span{font-size:11px;color:var(--tx4)}
+  .dbody{flex:1;min-width:0}
+  .dhd{display:flex;align-items:center;gap:11px}
+  .dhd b{font-size:15.5px;font-weight:600;letter-spacing:-.025em}
+  .dhd span{font-size:12px;color:var(--tx3)}
+  .why2{font-size:12.5px;color:var(--tx3);margin-top:6px;line-height:1.55}
+  .rules{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+  .rch{font-size:11.5px;padding:4px 11px;border-radius:999px;
+    background:rgba(255,95,87,.09);color:#ff8a84;border:1px solid rgba(255,95,87,.2)}
+  .rch b{font-weight:600;color:var(--red)}
+  .rch.hard{background:rgba(255,95,87,.19);border-color:rgba(255,95,87,.45);color:#ffb3af}
+  .rch.ok{background:var(--card2);color:var(--tx3);border-color:var(--line2)}
+  .rch.ok b{color:var(--tx2)}
+  .feed[data-f="sn"] .dec:not([data-v="sn"]),
+  .feed[data-f="sk"] .dec:not([data-v="sk"]),
+  .feed[data-f="bl"] .dec:not([data-v="bl"]){display:none}
+  /* hero */
+  .hero{padding:58px 0 46px;display:flex;flex-direction:column;align-items:center;
+    text-align:center;gap:22px}
+  .statuspill{display:inline-flex;align-items:center;gap:10px;background:var(--card);
+    border:1px solid var(--line);border-radius:999px;padding:7px 17px 7px 8px;font-size:13px;
+    color:var(--tx2)}
+  .statuspill b{color:var(--tx);font-weight:600}
+  .hero h1{margin:0;font-size:54px;font-weight:700;letter-spacing:-.045em;line-height:1.07;
+    max-width:17ch}
+  .hero p{margin:0;font-size:15.5px;color:var(--tx2);line-height:1.65;max-width:60ch}
+  .herocta{display:flex;gap:11px;margin-top:4px}
+  .btn.lg{padding:12px 25px;font-size:14.5px}
+
+  /* bento */
+  .bento{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+  .bx{background:var(--card);border:1px solid var(--line2);border-radius:18px;padding:19px;
+    display:flex;flex-direction:column;gap:15px;min-width:0;overflow:hidden}
+  .bx:hover{border-color:var(--line)}
+  .bx.w2{grid-column:span 2} .bx.w3{grid-column:span 3} .bx.w4{grid-column:span 4}
+  .bxhd{display:flex;align-items:center;gap:9px}
+  .bxhd h3{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.02em}
+  .bxhd .sub3{font-size:12px;color:var(--tx3)}
+  .bxft{margin-top:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;
+    color:var(--tx3);padding-top:6px;border-top:1px solid var(--line2)}
+  .bxft .op{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--tx2);
+    font-weight:500}
+  .bx:hover .op{color:var(--tx)}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+  .tile{background:var(--card2);border-radius:13px;padding:12px;display:flex;
+    flex-direction:column;gap:10px;min-width:0}
+  .tile .tt{font-size:13px;font-weight:600;letter-spacing:-.01em;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tile .tv{font-size:11px;color:var(--tx3);margin-top:1px}
+  .mrow{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:12px;
+    padding:11px 13px;min-width:0}
+  .mrow b{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+  .mrow .t{margin-left:auto;font-size:11px;color:var(--tx4);flex:none}
+  .minicol{display:flex;flex-direction:column;gap:8px}
+  .bignum2{font-size:34px;font-weight:700;letter-spacing:-.045em;line-height:1}
+  .fakeinput{display:flex;align-items:center;gap:10px;background:var(--bg);
+    border:1px solid var(--line);border-radius:999px;padding:11px 16px;font-size:12.5px;
+    color:var(--tx4)}
+  .fakeinput.focus{border-color:var(--tx);box-shadow:0 0 0 3px rgba(242,242,244,.08)}
+
+  /* flow diagram */
+  .flowcard{background:var(--card);border:1px solid var(--line2);border-radius:20px;
+    padding:28px 26px 22px}
+  .flowlegend{display:flex;gap:22px;flex-wrap:wrap;margin-top:20px;padding-top:18px;
+    border-top:1px solid var(--line2);font-size:12px;color:var(--tx3)}
+  .flowlegend s{text-decoration:none;display:flex;align-items:center;gap:8px}
+  .lgline{width:22px;height:2px;border-radius:1px;flex:none}
+
+/* ===========================================================================
+ * RUNTIME — everything below this line is app plumbing, not design.
+ * ======================================================================== */
+
+/* Page routing. The artboards are one page each; the app is one document with
+   six sections and a hash route. */
+.pg{display:none}
+.pg.on{display:block}
+.shell{min-height:100vh}
+
+/* The wallet button: unlock/lock lives here because the design gives the
+   wallet exactly one place in the shell. Its look is the FRAME section's. */
+.whoami .lk{font-size:10px;color:var(--tx4);font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase}
+.whoami .lk:empty{display:none}
+.whoami:hover .lk{color:var(--tx2)}
+/* The trading-wallet chip (public-release W1.2) hides on an origin with no
+   trading wallet; .whoami's display would otherwise override [hidden]. */
+.whoami[hidden]{display:none}
+
+/* Empty and loading states. The canvas never shows a board with nothing on it;
+   a real one is empty for the first few seconds of every boot. */
+.empty{padding:44px 20px;text-align:center;color:var(--tx3);font-size:13px;
+  border:1px dashed var(--line);border-radius:16px;grid-column:1/-1}
+.empty b{display:block;color:var(--tx2);font-size:14px;font-weight:600;margin-bottom:6px}
+.skel{background:var(--card2);border-radius:6px;display:inline-block;height:1em;
+  min-width:44px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.45}50%{opacity:.8}}
+
+/* Toasts */
+#toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;
+  gap:9px;z-index:60;max-width:370px}
+.toast{background:var(--card2);border:1px solid var(--line);border-radius:13px;
+  padding:13px 15px;font-size:12.5px;color:var(--tx2);line-height:1.5;
+  box-shadow:0 12px 30px rgba(0,0,0,.45);transition:opacity .35s ease}
+.toast b{display:block;font-size:13px;color:var(--tx);font-weight:600;margin-bottom:3px}
+.toast.ok{border-color:rgba(63,214,140,.4)}
+.toast.ok b{color:var(--grn)}
+.toast.warn{border-color:rgba(255,179,64,.45)}
+.toast.warn b{color:var(--amb)}
+.toast.err{border-color:rgba(255,95,87,.45)}
+.toast.err b{color:#ff8a84}
+.toast a{color:var(--acc);font-family:var(--mo);font-size:11.5px}
+
+/* Every sheet: the scrim (.modal) and its box (.mbox). Since U0 the box is
+   the trading-wallet sheet's: its padding, shadow and rise, and scrolling
+   inside itself when the window is short. A sheet sets its own width inline;
+   the default is the wallet's.
+
+   The rise is on the scrim, not the box: the plan sheet and the login sheet
+   repaint their box at each step, and a box animated by itself would rise
+   again every time. The scrim is made once per sheet, and its --rise (a
+   registered number, so it animates) reaches whichever box is inside. */
+@property --rise{syntax:'<number>';inherits:true;initial-value:0}
+.modal{position:fixed;inset:0;background:rgba(5,5,7,.72);display:grid;
+  place-items:center;z-index:80;padding:20px;animation:sheetin .18s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheetin{from{opacity:0;--rise:1}}
+.mbox{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:20px;width:min(460px,100%);max-height:calc(100vh - 40px);overflow-y:auto;
+  display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-2);
+  translate:0 calc(var(--rise) * 8px);scale:calc(1 - var(--rise) * .015)}
+.mbox:focus{outline:none}
+@media (prefers-reduced-motion:reduce){.modal{animation:none}}
+.mbox h3{margin:0;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.mbox p{margin:0;font-size:12.5px;color:var(--tx3);line-height:1.6}
+.mbox input{background:var(--bg);border:1px solid var(--line);border-radius:11px;
+  padding:11px 15px;color:var(--tx);font:inherit;font-size:13px;outline:none;
+  font-family:var(--mo)}
+.mbox input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(110,168,255,.12)}
+.mbtns{display:flex;gap:9px;justify-content:flex-end;margin-top:3px}
+
+/* The Positions stat row is five up, not four: the artboard predates fees
+   being a number anyone could see, and the fee is the largest cost in the
+   system. Same tile, same tokens, same gap — only the column count differs,
+   and only for this one row. */
+#pstats{grid-template-columns:repeat(5,minmax(0,1fr))}
+
+/* Narrow windows. The canvas is drawn at 1440; below ~1180 the four-up stat
+   row and three-up grid stop fitting. */
+@media (max-width:1180px){
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .recstats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* Three up leaves 3+2 rather than the 2+2+1 orphan two up would. */
+  #pstats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .bento{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .bx.w4{grid-column:span 4}
+  .spot{grid-template-columns:minmax(0,1fr);gap:18px}
+  .spot .divider{display:none}
+}
+@media (max-width:980px){
+  .grid{grid-template-columns:minmax(0,1fr)!important}
+  .bento{grid-template-columns:minmax(0,1fr)}
+  .bx.w2,.bx.w3,.bx.w4{grid-column:span 1}
+  .hero h1{font-size:38px}
+  .page{padding:18px}
+}
+
+@media (max-width:680px){
+  .sysoff{margin:12px 16px 0;flex-wrap:wrap}
+  .sysoff .dot{display:none}
+  .stats{grid-template-columns:minmax(0,1fr)}
+  #pstats{grid-template-columns:minmax(0,1fr)}
+}
+
+/* The Positions artboard filters on data-b but app.css only ships the band
+   rules the Launches board needs, so the chips there toggled without
+   filtering. Same `:not` shape as the Launches rules in sort.css, and scoped
+   to #pgrid rather than .grid so these values can never collide with the
+   band values the other boards filter on. */
+#pgrid[data-f="sniped"] .lc:not([data-b="sniped"]),
+#pgrid[data-f="manual"] .lc:not([data-b="manual"]),
+#pgrid[data-f="paper"] .lc:not([data-b="paper"]){display:none}
+
+/* Per-position fee ledger. Collapsed by default: four extra rows on every
+   card in a two-up grid buries the numbers people actually scan for. Rows
+   reuse the .tprow primitive the trade panel already introduced. */
+.feeledger{background:var(--card2);border-radius:9px;padding:1px 12px;margin-top:9px}
+.feeledger .tprow{font-size:11.5px;padding:7px 0;border-bottom:1px solid var(--line2)}
+.feeledger .tprow:last-child{border-bottom:none}
+.feeledger .tprow.proj{color:var(--tx4)}
+.feeledger .tprow.proj b{color:var(--tx3);font-weight:500}
+.feeledger .tprow.tot b{color:var(--tx)}
+.feetog{cursor:pointer;user-select:none}
+.feetog:hover{color:var(--tx2)}
+
+/* Anything that navigates by data-go. */
+[data-go]{cursor:pointer}
+
+/* ===========================================================================
+ * TRADING — not on the design canvas.
+ *
+ * The artboards have no buy or sell control anywhere, so this vocabulary is
+ * additive. It is built from the design's own primitives (.btn, .lcft, the
+ * accent tokens) rather than a new look, so re-copying the canvas over
+ * app.css above leaves this section intact and still matching.
+ * ======================================================================== */
+
+/* The trade cell at a board row's end (U2): progress, a holding and its
+   sells, then Buy, right-aligned so the Buy buttons line up. */
+.tradebar{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
+.tradebar .hold{font-size:11px;color:var(--tx3);font-family:var(--mo);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.btn.sell{background:transparent;border-color:rgba(255,95,87,.32);color:#ff8a84}
+.btn.sell:hover{background:rgba(255,95,87,.1);border-color:rgba(255,95,87,.5)}
+
+/* A buy into something that failed a gate. Red because it is over a limit,
+   not because it is unavailable — the click still works, it just confirms. */
+.btn.risky{background:transparent;border-color:rgba(255,95,87,.45);color:#ff8a84}
+.btn.risky:hover{background:rgba(255,95,87,.12)}
+
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn[disabled]:hover{background:var(--card);border-color:var(--line)}
+.btn.busy{color:transparent;position:relative;pointer-events:none}
+.btn.busy::after{content:"";position:absolute;inset:0;margin:auto;width:12px;height:12px;
+  border:2px solid var(--tx4);border-top-color:var(--tx);border-radius:50%;
+  animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Quick-buy size, in the top bar's popover (U1), reachable from every page. */
+.qbuy .qlb{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--tx3);display:block;margin-bottom:8px}
+.qrow{display:flex;gap:5px}
+.qsz{flex:1;border-radius:9px;padding:7px 0;font:inherit;font-size:12.5px;font-weight:600;
+  border:1px solid var(--line);background:var(--card2);color:var(--tx2);cursor:pointer;
+  text-align:center;min-width:0}
+.qsz:hover{color:var(--tx)}
+.qsz.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.qfoot{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--tx3)}
+.qfoot input{width:52px;background:var(--bg);border:1px solid var(--line);border-radius:7px;
+  padding:4px 6px;color:var(--tx2);font:inherit;font-size:12px;font-family:var(--mo);
+  outline:none;text-align:right}
+.qfoot input:focus{border-color:var(--acc)}
+/* "Review each trade" (W3.1): the trading wallet's plan sheet on every trade. */
+.qrev{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--tx2);cursor:pointer}
+.qrev[hidden]{display:none}
+.qrev input{margin:0;accent-color:var(--acc)}
+/* A one-click trade's progress on its card's trade bar. */
+.tradebar .tprog{font-size:11px;color:var(--amb);font-family:var(--mo)}
+.tradebar .tprog.ok{color:var(--grn)}
+.tradebar .tprog a{color:var(--acc);text-decoration:none}
+
+/* ===========================================================================
+ * TOKEN DASHBOARD — also not on the canvas. Its pieces the token page still
+ * draws with; the page's layout is the TOKEN section at the foot (U4).
+ * ======================================================================== */
+
+.back{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--tx3);
+  cursor:pointer;width:fit-content;padding:4px 0}
+.back:hover{color:var(--tx)}
+
+/* chart */
+.chartwrap{position:relative}
+.chartwrap svg{display:block;width:100%;overflow:visible}
+.gridline{stroke:var(--line2);stroke-width:1}
+.axlb{fill:var(--tx4);font-size:9.5px;font-family:var(--mo)}
+.crosshair{stroke:var(--tx4);stroke-width:1;stroke-dasharray:3 3}
+.chartdot{fill:var(--grn);stroke:var(--card);stroke-width:2.5}
+.chartdot.down{fill:var(--red)}
+.chartnote{font-size:11px;color:var(--tx4);display:flex;align-items:center;gap:8px}
+.tip{position:absolute;pointer-events:none;background:var(--card3);border:1px solid var(--line);
+  border-radius:9px;padding:7px 10px;font-size:11.5px;color:var(--tx);white-space:nowrap;
+  box-shadow:var(--shadow, 0 6px 18px rgba(0,0,0,.4));transform:translate(-50%,-125%);
+  opacity:0;transition:opacity .12s ease;z-index:5}
+.tip.on{opacity:1}
+.tip i{font-style:normal;display:block;color:var(--tx4);font-size:10px;margin-top:2px}
+
+/* trade panel */
+.tphd{display:flex;align-items:center;gap:9px}
+.tphd h3{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.02em}
+.tpseg{display:flex;gap:5px}
+.tpseg button{flex:1;border-radius:10px;padding:8px 0;font:inherit;font-size:12.5px;
+  font-weight:600;border:1px solid var(--line);background:var(--card2);color:var(--tx2);
+  cursor:pointer;min-width:0}
+.tpseg button:hover{color:var(--tx)}
+.tpseg button.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.bigbtn{width:100%;border-radius:13px;padding:14px 0;font:inherit;font-size:15px;
+  font-weight:700;letter-spacing:-.01em;border:1px solid var(--tx);background:var(--tx);
+  color:var(--bg);cursor:pointer}
+.bigbtn:hover{background:#fff}
+.bigbtn.risky{background:var(--red);border-color:var(--red);color:#1a0b0a}
+.bigbtn.risky:hover{background:#ff7068}
+.bigbtn[disabled]{opacity:.35;cursor:not-allowed;background:var(--card3);
+  border-color:var(--line);color:var(--tx3)}
+.bigbtn[disabled]:hover{background:var(--card3)}
+.tpnote{font-size:11px;color:var(--tx4);line-height:1.5;text-align:center}
+.tprow{display:flex;align-items:center;justify-content:space-between;font-size:12px;
+  color:var(--tx3);padding:7px 0;border-bottom:1px solid var(--line2)}
+.tprow:last-child{border-bottom:none}
+.tprow b{color:var(--tx2);font-weight:600}
+.tprow b.grn{color:var(--grn)} .tprow b.red{color:var(--red)} .tprow b.amb{color:var(--amb)}
+.tpdiv{height:1px;background:var(--line2)}
+
+.addrrow{display:flex;align-items:center;gap:9px;padding:9px 0;
+  border-bottom:1px solid var(--line2);font-size:12px}
+.addrrow:last-child{border-bottom:none}
+.addrrow .k{color:var(--tx3);width:74px;flex:none}
+.addrrow .v{font-family:var(--mo);font-size:11.5px;color:var(--tx2);overflow:hidden;
+  text-overflow:ellipsis}
+.copy{margin-left:auto;font-size:10.5px;color:var(--tx4);cursor:pointer;flex:none}
+.copy:hover{color:var(--acc)}
+
+/* Graduated — deliberately outside the green/amber/red risk vocabulary. It is
+   not a risk verdict, it is a venue change, and colouring it as risk is what
+   made a completed graduation read as the worst possible outcome. */
+.bd.GRAD{background:rgba(167,139,250,.14);color:var(--vio)}
+.lc.grad{border-color:rgba(167,139,250,.32)}
+.flag.vio{background:rgba(167,139,250,.11);color:var(--vio)}
+.vio{color:var(--vio)}
+
+/* wallet panel */
+.wrow{display:flex;align-items:center;gap:10px;font-size:12.5px;
+  padding:8px 0;border-bottom:1px solid var(--line2)}
+.wrow:last-of-type{border-bottom:none}
+.wrow .k{color:var(--tx3);width:66px;flex:none}
+.wrow .v{color:var(--tx);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrow .v.mo{font-size:11.5px}
+.wrow .copy{margin-left:auto}
+.wrow .btn{margin-left:auto}
+.wseg{display:flex;gap:6px}
+.wseg button{flex:1;border-radius:10px;padding:9px 0;font:inherit;font-size:12.5px;
+  font-weight:600;border:1px solid var(--line);background:var(--card2);color:var(--tx2);
+  cursor:pointer}
+.wseg button:hover{color:var(--tx)}
+.wseg button.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.mbox input[type=text]{background:var(--bg);border:1px solid var(--line);border-radius:11px;
+  padding:11px 15px;color:var(--tx);font:inherit;font-size:12.5px;outline:none;
+  font-family:var(--mo);width:100%}
+.mbox input[type=text]:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(110,168,255,.12)}
+/* The trading wallet's sheet (pages/wallet.js), laid out as wallets lay
+   themselves out: the account and its balance on a card, the warnings as
+   callouts, Fund and Withdraw all as tabs, one full-width action each. The
+   sentence naming the site is picked out: it is the one thing a copy of this
+   page cannot show truthfully. Since U0 its generic pieces are the shared
+   components (the sheet's head and foot, .callout, .seg, .field, .avatar,
+   the .btn variants); what is left here is the wallet's own. */
+.twpart{display:flex;flex-direction:column;gap:10px}
+.twk{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3)}
+
+/* the account card */
+.twcard{background:linear-gradient(180deg,var(--card3),var(--card2));border:1px solid var(--line);
+  border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:18px}
+.twacct{display:flex;align-items:center;gap:12px;min-width:0}
+.twid{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.twidtop{display:flex;align-items:center;gap:8px}
+.twnet{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--tx)}
+.twnet::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--grn);
+  box-shadow:0 0 0 3px rgba(63,214,140,.15)}
+.twchip{font-size:11px;font-weight:600;color:var(--tx2);background:var(--card);border:1px solid var(--line);
+  border-radius:999px;padding:1px 8px;line-height:1.5}
+.twaddr{display:flex;align-items:center;gap:8px;min-width:0}
+.twaddr .mo{font-size:10.5px;color:var(--tx3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.twaddr .addrcopy{margin-left:auto}
+.twbal{display:flex;flex-direction:column;gap:6px}
+.twamt{display:flex;align-items:baseline;gap:7px;font-size:34px;font-weight:600;letter-spacing:-.035em;line-height:1;color:var(--tx)}
+.twxi{font-size:22px;font-weight:500;color:var(--tx3);letter-spacing:0;position:relative;top:-1px}
+.twread{font-size:16px;font-weight:500;color:var(--tx3);letter-spacing:0}
+.twmain{display:flex;align-items:center;gap:8px;min-width:0;padding-top:14px;border-top:1px solid var(--line);
+  font-size:12px}
+.twmain .mo{font-size:11px;color:var(--tx2)}
+.twmain .btn{margin-left:auto}
+
+/* Fund / Withdraw */
+.twtabs{margin-top:4px}
+.twpane{display:flex;flex-direction:column;gap:12px}
+.twpane[hidden]{display:none}
+.twbox .twsitel{font-size:12px;color:var(--tx2);border-left:2px solid var(--amb);padding-left:10px}
+.twsite{font-weight:600;color:var(--tx)}
+.twbox .twwhy{font-size:11.5px;color:var(--tx3);text-align:center;margin-top:-4px}
+.twalt{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px dashed var(--line);border-radius:12px}
+.twbox .twalt p{font-size:11.5px;color:var(--tx3);flex:1;min-width:0}
+.twbox .twalt .mo{font-size:11px;color:var(--tx2)}
+.twdest{padding:12px 14px;background:var(--card2);border:1px solid var(--line2);border-radius:12px;
+  font-size:12.5px;line-height:1.55;color:var(--tx2)}
+.twdest .mo{display:block;margin-top:6px;font-size:11.5px;color:var(--tx)}
+.twbox .twsmall{font-size:11.5px;color:var(--tx3)}
+.twbox .twidle{font-size:11px;color:var(--tx4);text-align:center;margin-top:-4px}
+
+/* Token picture, centred inside the progress ring. Sits above the initials so
+   a logo that fails to load simply reveals them. */
+.ringwrap .pfp{position:absolute;inset:0;margin:auto;border-radius:50%;
+  object-fit:cover;display:block;background:var(--card3)}
+
+/* Card metadata strip — who deployed it, and their record. */
+.metarow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx4);
+  min-width:0;white-space:nowrap}
+/* The creator's record is the part that gives if the card is narrow; the
+   address and its copy control must never wrap or shrink. */
+.metarow .rec{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.metarow a{font-family:var(--mo);font-size:11px;color:var(--tx3);flex:none}
+.metarow a:hover{color:var(--acc)}
+.metarow .dead{color:var(--amb)}
+.metarow .fresh{color:var(--tx4)}
+
+/* Copyable address chip. Sized and padded like a control rather than text, so
+   it is obvious it does something — these get clicked constantly. */
+.addrcopy{font-family:var(--mo);font-size:10.5px;color:var(--tx3);cursor:pointer;
+  border:1px solid var(--line2);border-radius:7px;padding:3px 7px;flex:none;
+  display:inline-flex;align-items:center;gap:5px;user-select:none;
+  transition:color .12s ease,border-color .12s ease,background .12s ease}
+.addrcopy::after{content:"";width:9px;height:9px;flex:none;border-radius:2px;
+  border:1.2px solid currentColor;box-shadow:2px -2px 0 -0.4px var(--card),3px -3px 0 -0.4px currentColor}
+.addrcopy:hover{color:var(--tx);border-color:var(--line);background:var(--card2)}
+.addrcopy.done{color:var(--grn);border-color:rgba(63,214,140,.4)}
+.addrcopy.done::after{box-shadow:none;border:none;
+  width:4px;height:8px;border-right:1.6px solid var(--grn);
+  border-bottom:1.6px solid var(--grn);transform:rotate(45deg) translateY(-1px);border-radius:0}
+
+/* Marks the trade panel when the venue is the V4 pool rather than the curve. */
+.v4note{font-size:11px;color:var(--vio);background:rgba(167,139,250,.11);
+  border-radius:9px;padding:7px 10px;text-align:center}
+
+/* Hosted mode (public-release F1.1). The operator's own chrome, marked
+   data-self-only in app.html, does not exist on a public page. The hosted page
+   is served already stamped, so this holds from the first paint; a self page
+   carries no stamp and is untouched. */
+body[data-mode=hosted] [data-self-only]{display:none!important}
+/* The mirror image (public-release F2): the visitor's wallet chip exists only
+   on a hosted page. A self page is never stamped, so this holds before any
+   script runs too. */
+body:not([data-mode=hosted]) [data-hosted-only]{display:none!important}
+/* What a verdict is, under each large band on a hosted page (public-release
+   F5.1). Quiet like the risk line above it, and a link, to the About page. */
+.vnote{display:block;margin-top:5px;font-size:11.5px;color:var(--tx3);
+  text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.vnote:hover{color:var(--tx2)}
+/* The visitor's wallet picker (public-release F2), in the wallet panel's own
+   terms: rows like .wrow, buttons like .wseg's. */
+.wpicks{display:flex;flex-direction:column;gap:7px}
+.wpick{display:flex;align-items:center;gap:11px;width:100%;border-radius:11px;padding:10px 13px;
+  font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card2);
+  color:var(--tx);cursor:pointer;text-align:left}
+.wpick:hover{border-color:var(--acc)}
+.wpick img,.wpick .wpav{width:22px;height:22px;border-radius:6px;flex:none}
+.wpick .wpav{background:var(--card3)}
+.wpick .wpav.ic{display:grid;place-items:center;color:var(--tx)}
+.wpick .wpav.g{background:#fff}
+/* The commit a hosted page was released from (public-release H1.2): quiet, at
+   the foot of every page, and selected whole with one click. */
+.relfoot{margin-top:auto;padding:22px 26px 20px;font-size:11px;color:var(--tx4)}
+.relfoot .mo{font-size:11px;color:var(--tx3);user-select:all;overflow-wrap:anywhere}
+/* The footer's links to About, Terms and Privacy (public-release F5.3). */
+.footlinks{display:flex;flex-wrap:wrap;gap:4px 16px;margin-bottom:6px}
+.footlinks a{font-size:12px;color:var(--tx3)}
+.footlinks a:hover{color:var(--tx)}
+
+/* The release stage by the name (public-release F5.3), hosted only: beside
+   the name in the top bar, in the amber the design uses for a caution. */
+.logo .stage{display:inline-block;padding:0 5px;border-radius:5px;flex:none;
+  font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;line-height:1.6;
+  color:var(--amb);border:1px solid rgba(255,179,64,.35)}
+.logo .stage[hidden]{display:none}
+/* The beta notice: the system-off bar's shape, with a link to About. */
+.betabar a{color:var(--tx);text-decoration:underline;text-decoration-color:var(--line);
+  text-underline-offset:3px;margin-left:4px}
+
+/* The About page (public-release F5.3): sections of text, as cards. Its
+   contents are Learn's, beside it (the LEARN section at the foot). */
+.about{max-width:760px}
+.about h2{margin:0 0 8px;font-size:17px;font-weight:700;letter-spacing:-.025em}
+.about h3{margin:16px 0 4px;font-size:13.5px;font-weight:600;color:var(--tx)}
+.about p,.about li{font-size:13.5px;color:var(--tx2);line-height:1.6}
+.about p{margin:8px 0 0}
+.about ul,.about ol{margin:8px 0 0;padding-left:20px}
+.about li + li{margin-top:5px}
+.about b{color:var(--tx);font-weight:600}
+.about a{color:var(--tx);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.about code{overflow-wrap:anywhere;color:var(--tx)}
+.about code.ph{color:var(--amb)}
+.about pre{margin:10px 0 0;padding:11px 14px;border-radius:11px;background:var(--card2);
+  border:1px solid var(--line2);color:var(--tx);white-space:pre-wrap;overflow-wrap:anywhere}
+.about.warn{border-color:rgba(255,179,64,.35)}
+/* The data API's field lists (X21): the name beside what it means, stacked on a phone. */
+.about .apif{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 14px;margin:8px 0 0;
+  font-size:13px;line-height:1.55}
+.about .apif dt{color:var(--tx)}
+.about .apif dd{margin:0;color:var(--tx2)}
+.about h3 code{font-size:12.5px}
+.about pre.apians{color:var(--tx2);font-size:12px}
+@media (max-width:680px){.about .apif{grid-template-columns:minmax(0,1fr);gap:2px 0}
+  .about .apif dd{margin-bottom:6px}}
+
+/* The console's own fonts (public-release F5.2), from each family's repository:
+   see fonts/SOURCES.txt. Relative URLs, so they resolve under a release's
+   /v/<sha>/ as well as at /fonts/. Schibsted Grotesk is one variable file for
+   every weight the design uses. */
+@font-face{font-family:'Schibsted Grotesk';font-style:normal;font-weight:400 800;font-display:swap;
+  src:url(fonts/SchibstedGrotesk-Variable.woff2) format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:400;font-display:swap;
+  src:url(fonts/JetBrainsMono-Regular.woff2) format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500;font-display:swap;
+  src:url(fonts/JetBrainsMono-Medium.woff2) format('woff2')}
+
+/* The logo's mark: the mascot's face (the user, 2026-09-22), the same
+   picture as the site's icons, in a rounded square. */
+.logo .mk.pic{background:none;overflow:hidden;padding:0}
+.logo .mk.pic img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* The Flow page's story (public-release F5.8), above its curve cards in both
+   modes. It brings no colour of its own: the green of an edge, and the amber
+   the design uses for a caution. The drawings are .flowcard's, and phone.css
+   swaps them for their phone drawings as it does the curve's. */
+.storyfor{margin:0;align-self:flex-start;font-size:12px;color:var(--tx3);
+  border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+.storyhead h1{font-size:40px;letter-spacing:-.045em;line-height:1.08}
+.storyhead p{font-size:15px;color:var(--tx2)}
+.edges{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.edge{background:var(--card);border:1px solid var(--line2);border-radius:16px;padding:16px 18px}
+.edge b{display:block;font-size:15px;font-weight:700;letter-spacing:-.02em;color:var(--grn)}
+.edge p{margin:6px 0 0;font-size:13px;color:var(--tx2);line-height:1.55}
+.sthd{margin:14px 0 0;font-size:20px;font-weight:700;letter-spacing:-.03em;line-height:1.2}
+.phead .sthd{margin:0}
+.storytext p{margin:0;max-width:92ch;font-size:13.5px;color:var(--tx2);line-height:1.6}
+.storytext p + p{margin-top:9px}
+.storytext b{color:var(--tx);font-weight:600}
+.lgtag{font-size:9.5px;font-weight:700;letter-spacing:.1em;color:var(--grn);background:rgba(63,214,140,.12);
+  border:1px solid rgba(63,214,140,.45);border-radius:999px;padding:1px 8px}
+.honest{margin:20px 0 0;padding:13px 16px;border-radius:12px;font-size:13px;color:var(--tx2);line-height:1.6;
+  background:rgba(255,179,64,.1);border:1px solid rgba(255,179,64,.35)}
+.honest b{color:var(--amb);font-weight:600}
+.storycum{margin:14px 0 0;font-size:13px;color:var(--tx2);line-height:1.6}
+.storycum b{color:var(--tx);font-weight:600}
+.storylink{color:var(--tx);text-decoration:underline;text-decoration-color:var(--line);
+  text-underline-offset:3px;white-space:nowrap}
+/* Where a trade signs, as flow.js marks the page: the trading wallet's words,
+   or the visitor's own wallet's where this origin has no trading wallet. */
+#pg-flow[data-wallet="own"] [data-tw],
+#pg-flow:not([data-wallet="own"]) [data-own]{display:none}
+/* The console has no About page, so there the story's links to it are words. */
+body:not([data-mode=hosted]) .storylink{pointer-events:none;text-decoration:none;color:inherit}
+
+/* ===========================================================================
+ * SHARED COMPONENTS — the redesign's design system (u-redesign.md, U0).
+ *
+ * The pieces every page uses, written once, taken from the trading-wallet
+ * sheet and the approved demo (design/redesign-demo). Where the canvas above
+ * already has a component, it is the base and only modifiers are added:
+ * .btn, .chip, .bd, .addrcopy, .empty, .skel, .toast. Where the demo's name is
+ * taken above for something else, the component has its own: .panel not
+ * .card, .kpi not .stat, .ltag not .tag, .dtable not table. So nothing here
+ * restyles an element that does not ask for it by class.
+ *
+ * No tabular figures, as in the body rule at the top: Schibsted Grotesk's
+ * tabular set widens . and , to a digit's width. Numbers in a table line up
+ * by aligning right instead.
+ * ======================================================================== */
+
+/* Read by a screen reader, not seen. */
+.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* The focus ring, on every control here, for the keyboard only. */
+.btn:focus-visible,.chip:focus-visible,.seg > button:focus-visible,.tabs > button:focus-visible,
+.sheetx:focus-visible,.addrcopy:focus-visible,.dtable th > button:focus-visible{outline:var(--ring);outline-offset:2px}
+
+/* ---- buttons -----------------------------------------------------------
+   .btn alone is the secondary button, .btn.pri the primary (the canvas's).
+   Sizes: .sm, .md (the size .btn has anyway) and .lg; .block fills the row. */
+.btn.md{padding:9px 17px;font-size:13px}
+.btn.block{width:100%}
+.btn.ghost{background:transparent}
+.btn.ghost:hover{background:var(--card2)}
+.btn.danger{color:#ff8a84}
+.btn.danger:hover{background:rgba(255,95,87,.08);border-color:rgba(255,95,87,.4)}
+/* The one-click buy on a row: green, quieter than a primary. */
+.btn.buy{background:rgba(63,214,140,.1);color:var(--grn);border-color:rgba(63,214,140,.28)}
+.btn.buy:hover{background:rgba(63,214,140,.2);border-color:rgba(63,214,140,.45)}
+/* Disabled keeps its own look on hover (the canvas's rule would paint a card). */
+.btn.ghost[disabled]:hover{background:transparent}
+.btn.buy[disabled]:hover{background:rgba(63,214,140,.1);border-color:rgba(63,214,140,.28)}
+
+/* ---- a field, with its unit -------------------------------------------
+   The box is the target: a click anywhere in it reaches the input (make it a
+   <label>). The sheet's own input rules (.mbox input) are beaten here on
+   purpose, so a field looks the same inside a sheet and out. .lg is the
+   amount field, as Fund's. */
+.field{display:flex;align-items:center;gap:10px;padding:0 14px;cursor:text;background:var(--bg);
+  border:1px solid var(--line);border-radius:var(--r-sm);transition:border-color .12s ease,box-shadow .12s ease}
+.field:hover{border-color:#34343c}
+.field:focus-within{border-color:var(--acc);box-shadow:var(--ring-field)}
+.field input,.mbox .field input,.mbox .field input[type=text]{flex:1;min-width:0;width:auto;padding:10px 0;
+  border:none;border-radius:0;background:transparent;box-shadow:none;outline:none;
+  color:var(--tx);font:inherit;font-size:13px}
+.field input::placeholder{color:var(--tx4)}
+.field .unit{flex:none;font-size:12px;font-weight:700;color:var(--tx2);background:var(--card3);
+  border-radius:var(--r-pill);padding:2px 9px}
+.field.lg{padding:0 16px;border-radius:var(--r-md)}
+.field.lg input,.mbox .field.lg input,.mbox .field.lg input[type=text]{padding:14px 0;font-size:24px;
+  font-weight:600;letter-spacing:-.02em}
+.field.lg .unit{font-size:13px;padding:3px 10px}
+
+/* ---- segmented control ------------------------------------------------
+   Buttons in a well; the chosen one raised. aria-selected for tabs (with
+   role=tab), aria-pressed for a toggle such as a view switch. .full shares
+   the width equally. */
+.seg{display:inline-flex;gap:3px;padding:3px;background:var(--bg);border:1px solid var(--line2);
+  border-radius:var(--r-sm)}
+.seg.full{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.seg > button{font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border:none;
+  border-radius:calc(var(--r-sm) - 3px);background:transparent;color:var(--tx3);cursor:pointer;
+  white-space:nowrap;transition:background .12s ease,color .12s ease}
+.seg.full > button{padding:8px 10px}
+.seg.sm > button{font-size:12px;padding:5px 11px}
+.seg > button:hover{color:var(--tx)}
+.seg > button[aria-selected=true],.seg > button[aria-pressed=true]{background:var(--card3);color:var(--tx);
+  box-shadow:0 1px 2px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.04)}
+
+/* ---- tabs: a row of words, the chosen one underlined (a page's) -------- */
+.tabs{display:flex;gap:18px;border-bottom:1px solid var(--line2);overflow-x:auto;scrollbar-width:none}
+.tabs > button{font:inherit;font-size:13px;font-weight:600;padding:12px 0;border:none;background:transparent;
+  color:var(--tx3);cursor:pointer;position:relative;white-space:nowrap}
+.tabs > button:hover{color:var(--tx)}
+.tabs > button[aria-selected=true]{color:var(--tx)}
+.tabs > button[aria-selected=true]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  border-radius:2px;background:var(--tx)}
+.tabs > button .n{font-size:11px;color:var(--tx3);margin-left:5px}
+
+/* ---- filter chip, with its count --------------------------------------
+   The canvas's .chip and its .n. A chip that is a <button> marks itself with
+   aria-pressed (wiring.js's mark() still inverts the span chips inline). */
+button.chip{font:inherit;font-size:12.5px;font-weight:500}
+.chip[aria-pressed=true]{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.chip[aria-pressed=true] .n{color:var(--bg);opacity:.6}
+
+/* ---- verdict badge ----------------------------------------------------
+   The canvas's .bd and its bands (CLEAN, CAUTION, HIGH, AVOID, SCAN, GRAD);
+   the words stay the renderer's. .band leads it with a dot, as the demo's
+   (not .dot, which is the canvas's live-status dot). */
+.bd.band{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.bd.band::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+
+/* ---- tags: small marks beside a symbol --------------------------------- */
+.ltag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:var(--r-xs);
+  font-size:var(--fs-11);font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;
+  line-height:1}
+.ltag.new{color:var(--acc);background:rgba(110,168,255,.12)}
+.ltag.grad{color:var(--vio);background:rgba(167,139,250,.14)}
+.ltag.nosell{color:#ff8a84;background:rgba(255,95,87,.12)}
+
+/* ---- callout -----------------------------------------------------------
+   A line that must be read, with a mark at its start: .warn (amber), .info
+   (blue), .danger (red). .strong raises a warn; .busy turns the mark into a
+   pulse, for something running. Its words in a <span>, a button after them. */
+.callout{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0;
+  border-radius:12px;padding:10px 12px 10px 36px;font-size:12px;line-height:1.55;
+  background:var(--card2);border:1px solid var(--line);color:var(--tx2)}
+.callout > span{flex:1 1 220px;min-width:0}
+.callout::before{content:"!";position:absolute;left:12px;top:12px;width:15px;height:15px;border-radius:50%;
+  display:grid;place-items:center;font-size:10px;font-weight:700;line-height:1;background:var(--tx3);color:var(--bg)}
+.callout.warn{background:rgba(255,179,64,.06);border-color:rgba(255,179,64,.2);color:#f3c783}
+.callout.warn::before{background:var(--amb)}
+.callout.warn.strong{background:rgba(255,179,64,.11);border-color:rgba(255,179,64,.42)}
+.callout.warn b{color:var(--amb)}
+.callout.info{background:rgba(110,168,255,.07);border-color:rgba(110,168,255,.24);color:#b9d3ff}
+.callout.info::before{content:"i";background:var(--acc)}
+.callout.danger{background:rgba(255,95,87,.08);border-color:rgba(255,95,87,.3);color:#ffb3af}
+.callout.danger::before{background:var(--red)}
+.callout.danger b{color:#ff8a84}
+.callout.busy::before{content:"";left:15px;top:16px;width:8px;height:8px;animation:calloutbusy 1.2s ease-in-out infinite}
+@keyframes calloutbusy{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.callout.busy::before{animation:none}}
+
+/* ---- panel: the redesign's card, with an optional head ----------------- */
+.panel{background:var(--card);border:1px solid var(--line2);border-radius:var(--r-lg);min-width:0}
+.panelhd{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.panelhd h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.02em}
+.panelhd > :last-child:not(:first-child){margin-left:auto}
+.panelbd{padding:16px}
+
+/* ---- stat: a label, a number, a line under it -------------------------- */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line2);border-radius:var(--r-md);padding:14px 16px;
+  display:flex;flex-direction:column;gap:6px;min-width:0}
+.kpi small{font-size:var(--fs-11);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3)}
+.kpi b{font-size:var(--fs-20);font-weight:700;letter-spacing:-.03em;line-height:1.1;overflow-wrap:anywhere}
+.kpi span{font-size:11.5px;color:var(--tx3)}
+
+/* ---- data table --------------------------------------------------------
+   In a .dtbox, which scrolls it (give the box a max-height and the head
+   stays put). Cells are one line; .num aligns a number right. A sortable
+   head is a <button> in its <th>, and the <th> carries aria-sort. A row that
+   opens something is .link. The canvas's bare table/th/td rules are beaten
+   by class here. */
+.dtbox{overflow:auto;background:var(--card);border:1px solid var(--line2);border-radius:var(--r-lg)}
+.dtable{width:100%;border-collapse:separate;border-spacing:0}
+.dtable th{position:sticky;top:0;z-index:2;background:var(--card);text-align:left;white-space:nowrap;
+  font-size:var(--fs-11);font-weight:600;letter-spacing:0;text-transform:none;color:var(--tx3);
+  padding:9px 12px;border-bottom:1px solid var(--line)}
+.dtable td{height:52px;padding:0 12px;font-size:13px;white-space:nowrap;border-bottom:1px solid var(--line2)}
+.dtable .num{text-align:right}
+.dtable tbody tr:last-child td{border-bottom:none}
+.dtable tbody tr td{transition:background .1s ease}
+.dtable tbody tr:hover td{background:var(--hover)}
+.dtable tbody tr.link{cursor:pointer}
+.dtable th > button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;text-align:inherit}
+.dtable th.num > button{flex-direction:row-reverse}
+.dtable th > button:hover,.dtable th[aria-sort=ascending],.dtable th[aria-sort=descending]{color:var(--tx)}
+.dtable th > button::after{content:"\25BE";font-size:9px;opacity:.35}
+.dtable th[aria-sort=ascending] > button::after{content:"\25B4";opacity:1}
+.dtable th[aria-sort=descending] > button::after{opacity:1}
+
+/* ---- the sheet's head and foot -----------------------------------------
+   The title and the corner's close button (named Close; Esc does the same,
+   ui.js holdSheet). The foot is a row of equal buttons over a rule. */
+.sheethd{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px}
+.sheethd h3{font-size:16px}
+.sheetx{width:32px;height:32px;margin-right:-6px;border:none;border-radius:50%;background:transparent;
+  color:var(--tx3);display:grid;place-items:center;cursor:pointer;flex:none;
+  transition:background .12s ease,color .12s ease}
+.sheetx:hover{background:var(--card3);color:var(--tx)}
+.sheetfoot{display:flex;gap:8px;padding-top:14px;margin-top:2px;border-top:1px solid var(--line2)}
+.sheetfoot .btn{flex:1}
+
+/* ---- the sheet family (U7) ---------------------------------------------
+   Every sheet reads the same: the head above, then its words, then one row
+   of actions that fills the width, the primary last (on the right), as the
+   wallet sheet's one full-width action does. A sheet's figures sit on a
+   card (.sheetcard, rows of .wrow); a line naming the site is the wallet
+   sheet's (.twsitel); small print is .sheetnote; a box that must be ticked
+   is .sheetcheck. The login and connect sheets list their ways in as large
+   option buttons (.wpicks), as the demo's login sheet does. */
+.sheetacts{display:flex;gap:8px;margin-top:2px}
+.sheetacts .btn{flex:1 1 0;min-width:0;padding:11px 16px;font-size:13.5px;text-align:center}
+.mbox p.sheetnote{font-size:11.5px;color:var(--tx4);line-height:1.55}
+.mbox p.sheetok{color:var(--grn);font-weight:600}
+.sheetcard{background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:2px 14px}
+.sheetcard .wrow:last-child{border-bottom:none}
+.sheetcard .wrow .addrcopy{margin-left:auto;flex:none}
+.mbox .twsitel{font-size:12px;color:var(--tx2);border-left:2px solid var(--amb);padding-left:10px}
+.sheetcheck{display:flex;gap:11px;align-items:flex-start;padding:12px 14px;border-radius:12px;
+  border:1px solid var(--line);background:var(--card2);font-size:13px;font-weight:500;color:var(--tx);
+  cursor:pointer;transition:border-color .12s ease,background .12s ease}
+.sheetcheck:hover{border-color:#34343c}
+.sheetcheck:has(input:checked){border-color:rgba(110,168,255,.55);background:rgba(110,168,255,.06)}
+.sheetcheck:has(input:disabled){cursor:not-allowed;color:var(--tx3)}
+.mbox .sheetcheck input{flex:none;width:18px;height:18px;margin:1px 0 0;padding:0;accent-color:var(--acc)}
+.sheetcheck input:focus-visible{outline:var(--ring);outline-offset:2px}
+/* The plan sheet: a trade's quote, then its steps, each on a card. */
+.mbox.plansheet{width:min(520px,100%)}
+.plansheet .wrow .pill{flex:none}
+/* A figure and its note wrap rather than lose their end, on a phone too. */
+.plansheet .wrow .v{white-space:normal;flex:1}
+.planwarns{display:flex;flex-direction:column;gap:8px}
+/* The backup sheet: Coinbase's frame keeps its container, which is never
+   repainted; its status line under it. */
+.mbox.bksheet{width:min(480px,100%)}
+.bkframe{min-height:52px}
+.mbox p.bkstatus{color:var(--tx2)}
+.bksheet .wrow .v{white-space:normal;word-break:break-all}
+.mbox p.bkalready{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;font-size:11.5px}
+/* The option buttons: large, one to a row, an icon and then the words. */
+.wpicks{gap:8px}
+.wpick{min-height:48px;padding:0 16px;gap:12px;border-radius:12px;font-size:14px;
+  transition:border-color .12s ease,background .12s ease}
+.wpick:hover{border-color:#3a3a44;background:var(--card3)}
+.wpick:focus-visible{outline:var(--ring);outline-offset:2px}
+.wpick img,.wpick .wpav{width:24px;height:24px;border-radius:7px}
+.wpick.more{background:transparent}
+.wpick.more::after{content:"";margin-left:auto;margin-right:3px;width:7px;height:7px;flex:none;
+  border-right:1.6px solid var(--tx3);border-top:1.6px solid var(--tx3);rotate:45deg}
+
+/* ---- copy chip ----------------------------------------------------------
+   The canvas's .addrcopy (a <span data-copy>, main.js copies it). As a
+   <button> it is reachable by Tab too, and looks the same. */
+button.addrcopy{font:inherit;font-family:var(--mo);font-size:10.5px;background:transparent}
+
+/* ---- avatar: a face drawn from an address (ui.js avatar()) ------------- */
+.avatar{width:28px;height:28px;border-radius:50%;flex:none;background:var(--card3);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.avatar.sm{width:20px;height:20px}
+.avatar.lg{width:38px;height:38px}
+
+/* ---- skeleton: the canvas's .skel, as a line or a block ---------------- */
+.skel{border-radius:var(--r-xs)}
+.skel.line{display:block;height:12px;width:100%}
+.skel.block{display:block;height:52px;width:100%;border-radius:var(--r-sm)}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+
+/* ---- empty state: the canvas's .empty, with room for a way out ---------
+   .plain drops the dashed box, for inside a panel or a table. */
+.empty p{margin:0 auto;max-width:48ch}
+.empty .btn{margin-top:14px}
+.empty.plain{border:none;border-radius:0}
+
+/* ---- toast: the canvas's, rising in as a sheet does -------------------- */
+.toast{border-radius:var(--r-md);box-shadow:var(--shadow-1);animation:toastin .18s cubic-bezier(.2,.8,.2,1)}
+@keyframes toastin{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+
+/* ===========================================================================
+ * FRAME — the top bar and how you get between pages (u-redesign.md, U1).
+ *
+ * The demo's top bar (design/redesign-demo): the logo, the pages, search,
+ * then on the right the live dot, the ETH price, the buy size and the one
+ * wallet button. Sticky, on every page, over content up to 1440 wide. The
+ * console's switches sit in a strip under it (self only). The phone's top
+ * bar and tab bar are phone.css's.
+ * ======================================================================== */
+/* The page keeps its scrollbar's room even when it is short (Activity, an
+   empty Portfolio), so the bar and the page do not jump 15px between pages. */
+html{scrollbar-gutter:stable}
+.top{position:sticky;top:0;z-index:40;background:rgba(9,9,11,.86);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line2)}
+.topin{max-width:1440px;margin:0 auto;display:flex;align-items:center;gap:20px;height:58px;
+  padding:0 max(20px,env(safe-area-inset-right)) 0 max(20px,env(safe-area-inset-left))}
+.topin > .sp{margin-left:-20px}
+.main{width:100%;max-width:1440px;margin:0 auto}
+
+/* The logo: the mark, the name and the beta badge. It leads to the board. */
+.logo{display:flex;align-items:center;gap:10px;flex:none;min-width:0;color:var(--tx)}
+.logo:hover{color:var(--tx)}
+.logo .mk{width:28px;height:28px;border-radius:9px;flex:none}
+.logo .lname{display:flex;align-items:center;gap:8px;min-width:0}
+.logo b{font-size:14.5px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+
+/* The pages: words, the current one bright and underlined at the bar's foot. */
+.tnav{display:flex;gap:2px;align-self:stretch}
+.tnav a{display:flex;align-items:center;padding:0 12px;position:relative;
+  font-size:13.5px;font-weight:600;color:var(--tx3);white-space:nowrap}
+.tnav a:hover,.tnav a[aria-current=page]{color:var(--tx)}
+.tnav a[aria-current=page]::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;
+  height:2px;border-radius:2px;background:var(--tx)}
+
+/* Search: a button that looks like a field, and opens the palette. */
+.tsearch{display:flex;align-items:center;gap:9px;width:min(340px,28vw);height:36px;padding:0 10px 0 12px;
+  border-radius:var(--r-sm);background:var(--card);border:1px solid var(--line);color:var(--tx3);
+  font:inherit;font-size:12.5px;text-align:left;cursor:pointer;flex:none;
+  transition:border-color .12s ease,color .12s ease}
+.tsearch:hover{border-color:#34343c;color:var(--tx2)}
+.tsearch svg{flex:none}
+.tsw{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kbd{font-family:var(--mo);font-size:10.5px;font-weight:500;color:var(--tx3);border:1px solid var(--line);
+  border-radius:5px;padding:1px 5px;flex:none;line-height:1.5}
+
+/* Live: a dot, its words in the tooltip. ETH: the price. */
+.tlive{display:grid;place-items:center;width:18px;height:36px;flex:none;cursor:help}
+.tstat{font-size:12px;color:var(--tx2);white-space:nowrap;flex:none}
+.tstat b{color:var(--tx);font-weight:600}
+
+/* The buy size: a chip, and its popover with the quick buy in it. */
+.tsize{position:relative;flex:none}
+.tchip{display:flex;align-items:center;gap:7px;height:36px;padding:0 12px;border-radius:var(--r-sm);
+  background:var(--card);border:1px solid var(--line);color:var(--tx);font:inherit;font-size:12.5px;
+  font-weight:600;white-space:nowrap;cursor:pointer}
+.tchip:hover,.tchip[aria-expanded=true]{border-color:#34343c}
+.tchip .bolt{color:var(--amb)}
+.tchip .lbl{color:var(--tx2)}
+.tchip b{font-weight:600}
+.tchip .car{color:var(--tx3);font-size:10px}
+.pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:288px;padding:14px;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-2)}
+.pop[hidden]{display:none}
+.qcustom{margin-top:8px;padding:0 10px}
+.qcustom input{padding:8px 0;font-family:var(--mo)}
+.qcustom[aria-invalid=true],.qcustom:has(input[aria-invalid=true]){border-color:rgba(255,95,87,.6)}
+#qnote{font-family:var(--mo);color:var(--tx2)}
+.qhint{margin:10px 0 0;font-size:11.5px;color:var(--tx3);line-height:1.5}
+
+/* The wallet button. Logged out it is the primary button and says what it
+   does; logged in, the wallet's face and its balance. */
+.top .whoami{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 4px;flex:none;
+  max-width:280px;border-radius:var(--r-pill);background:var(--card2);border:1px solid var(--line);
+  color:var(--tx);font:inherit;font-size:12.5px;font-weight:600;text-align:left;white-space:nowrap;cursor:pointer}
+.top .whoami:hover{border-color:#3a3a44}
+.top .whoami[hidden]{display:none}
+.top .whoami .av{width:26px;height:26px;border-radius:50%;background:var(--card3);flex:none;
+  display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--tx2)}
+.top .whoami .av .avatar{width:26px;height:26px}
+.whoami .wtx{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.whoami .wtx b{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.whoami .wtx .mo{font-size:10.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis}
+/* The trading wallet and the visitor's own show the balance alone; the
+   address is the tooltip, and a screen reader still reads it. */
+#tw .wtx .mo,#conn .wtx .mo{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.top .whoami.out{background:var(--tx);border-color:var(--tx);color:var(--bg);padding:0 16px 0 10px}
+.top .whoami.out:hover{background:#fff;border-color:#fff}
+.top .whoami.out .av{width:18px;background:none;color:var(--bg)}
+.top .whoami.out b{color:var(--bg)}
+.top .whoami.out .lk{color:var(--bg)}
+
+/* The focus ring, for the keyboard only. */
+.logo:focus-visible,.tnav a:focus-visible,.tsearch:focus-visible,.tchip:focus-visible,.top .whoami:focus-visible,
+.qsz:focus-visible,.tabbar a:focus-visible,.tabbar button:focus-visible{outline:var(--ring);outline-offset:2px}
+
+/* The console's switches (self only), in a strip under the top bar. */
+.selfstrip{display:flex;align-items:stretch;gap:10px;max-width:1440px;margin:0 auto;
+  padding:12px 26px 0}
+.selfstrip .syscard{width:auto;flex:none;padding:9px 13px}
+.selfstrip .armcard{flex:1;min-width:0;padding:9px 13px;display:flex;align-items:center}
+.selfstrip .armrow{flex:1;min-width:0}
+.selfstrip .armcard p{margin:0 0 0 4px;flex:1;min-width:0}
+
+/* The search palette (pages/search.js): a sheet near the top, a field, the
+   results as a list, and the keys at its foot. */
+.modal.srback{place-items:start center;padding-top:12vh}
+.mbox.palette{width:min(620px,100%);padding:0;gap:0;overflow:hidden}
+.srin{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line2);color:var(--tx3)}
+.srin svg{flex:none}
+.mbox .srin input,.mbox .srin input[type=text]{flex:1;min-width:0;width:auto;padding:0;border:none;border-radius:0;
+  background:transparent;box-shadow:none;outline:none;color:var(--tx);font:inherit;font-family:var(--ui);font-size:15px}
+.srhead{padding:10px 16px 4px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tx4)}
+.srlist{max-height:52vh;overflow-y:auto;padding:2px 6px 6px}
+.sritem{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:var(--r-sm);cursor:pointer}
+.sritem:hover{background:var(--hover)}
+.sritem[aria-selected=true]{background:var(--card2)}
+.srname{display:flex;flex-direction:column;min-width:0}
+.srname b{font-size:13.5px;font-weight:700;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srname span{font-size:11.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srend{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;font-size:12px;color:var(--tx2)}
+.srq{width:30px;height:30px;border-radius:50%;background:var(--card3);display:grid;place-items:center;
+  flex:none;font-weight:700;color:var(--tx2)}
+.mbox p.srnone{padding:24px 16px;text-align:center}
+.srfoot{display:flex;gap:14px;padding:9px 16px;border-top:1px solid var(--line2);font-size:11px;color:var(--tx3)}
+
+/* Narrower desktops: the ETH price goes first, then the search's words,
+   then (980 and under) the name beside the mark and the size's "Buy".
+
+   And at every width the bar gives way rather than run past the window
+   (U8: from 681 to 830 "Connect wallet" ran up to 60px past it): the
+   search field shrinks, down to its icon, and only then the wallet button
+   (the console's, whose words are longest), cutting its words with an
+   ellipsis. Search's weight is so much larger that the button does not
+   lose a fraction of a pixel while search still has room to give. */
+.tsearch{flex:0 10000 auto;min-width:36px}
+.top .whoami{flex:0 1 auto;min-width:0}
+.top .whoami .wtx{overflow:hidden}
+@media (max-width:1180px){
+  .tstat{display:none}
+}
+@media (max-width:1080px){
+  .tsearch{width:36px;padding:0;justify-content:center;flex:none}
+  .tsw,.tsearch .kbd{display:none}
+  .topin{gap:14px}
+  .topin > .sp{margin-left:-14px}
+  /* The console has five pages and a wider wallets chip: its name goes
+     here, so the chip keeps its balance. */
+  body:not([data-mode=hosted]) .logo .lname b{display:none}
+}
+@media (max-width:980px){
+  .logo .lname b,.tchip .lbl{display:none}
+  .topin{gap:10px}
+  .topin > .sp{margin-left:-10px}
+  /* The console's wallets chip: its words, without the address line. */
+  #whoami .wtx .mo{display:none}
+}
+
+/* ===========================================================================
+ * BOARD — the front page, every launch as a row (u-redesign.md, U2).
+ *
+ * The demo's board (design/redesign-demo): a first-visit intro, the heading
+ * with its summary line, then one box holding the toolbar and the table.
+ * The table is the shared .dtable; its head sticks under the top bar as the
+ * page scrolls. The box clips rather than scrolls, so the head's stickiness
+ * is the page's, and the columns give way as the window narrows (below)
+ * instead of the table scrolling sideways. The phone's two-line rows are
+ * phone.css's.
+ * ======================================================================== */
+.board{gap:14px}
+.bintro{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px 10px 14px;
+  border-radius:var(--r-sm);border:1px solid rgba(110,168,255,.2);font-size:13px;color:var(--tx2);
+  background:linear-gradient(90deg,rgba(110,168,255,.08),transparent 70%)}
+.bintro[hidden]{display:none}
+.bintro > span{flex:1 1 320px;min-width:0}
+.bintro b{color:var(--tx);font-weight:600}
+.bintro a{color:var(--acc);font-weight:600;white-space:nowrap}
+.bintro a:hover{color:#9cc4ff}
+.bintrox{width:28px;height:28px;border:none;border-radius:50%;background:transparent;color:var(--tx3);
+  display:grid;place-items:center;cursor:pointer;flex:none}
+.bintrox:hover{background:var(--card3);color:var(--tx)}
+.bhead{align-items:flex-end;justify-content:space-between}
+.bhead h1{font-size:24px;letter-spacing:-.03em}
+.phead p.bsum{display:flex;flex-wrap:wrap;gap:4px 16px;margin:6px 0 0;max-width:none;font-size:12.5px;color:var(--tx3)}
+.bsum b{color:var(--tx2);font-weight:600}
+.bsum b.grn{color:var(--grn)}
+.bnote{margin-left:auto}
+.bnote .vnote{margin-top:0}
+
+.bbox{background:var(--card);border:1px solid var(--line2);border-radius:var(--r-lg);overflow:hidden;overflow:clip}
+.btools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px;border-bottom:1px solid var(--line2)}
+.btools .chip{padding:5px 12px}
+.bfind{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.field.bq{width:200px;padding:0 11px;gap:8px;background:var(--card);color:var(--tx3)}
+.field.bq input{padding:7px 0;font-size:12.5px}
+.bsort{height:34px;border-radius:var(--r-sm);border:1px solid var(--line);background-color:var(--card);color:var(--tx);
+  padding:0 30px 0 11px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--tx3) 50%),linear-gradient(135deg,var(--tx3) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.bsort:hover{border-color:#34343c}
+.bsort:focus-visible{outline:var(--ring);outline-offset:2px}
+
+/* The head sticks under the top bar (58px), over the rows as they pass. */
+.btable th{top:58px;border-bottom-color:var(--line2)}
+.btable tbody tr.link:focus-visible{outline:none}
+.btable tbody tr.link:focus-visible td{background:var(--hover);box-shadow:inset 0 1px 0 var(--acc),inset 0 -1px 0 var(--acc)}
+.btable tbody tr.link:focus-visible td:first-child{box-shadow:inset 2px 0 0 var(--acc),inset 0 1px 0 var(--acc),inset 0 -1px 0 var(--acc)}
+.btable td{font-size:12.5px}
+.btable th.c-act,.btable td.c-act{width:1%;text-align:right}
+.btok{display:flex;align-items:center;gap:10px;min-width:0}
+.btnm{display:flex;flex-direction:column;min-width:0}
+.btnm b{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700;letter-spacing:-.01em;line-height:1.3}
+.bsym{overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.bname{font-size:11.5px;color:var(--tx3);max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.btable .c-mc b{font-weight:600}
+.bgrad{display:inline-flex;align-items:center;gap:8px}
+.bbar{display:block;width:64px;height:5px;border-radius:3px;background:var(--card3);overflow:hidden;flex:none}
+.bbar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--vio))}
+.bbar i.hot{background:var(--amb)}
+.bgrad > span:last-child{min-width:42px;text-align:right}
+.btable .bd.band{font-size:10.5px;padding:3px 9px}
+.btable .tradebar .btn.sm{padding:5px 11px}
+.btable .tradebar .hold{font-size:11px;color:var(--tx3);font-family:var(--mo);white-space:nowrap}
+/* A launch that lands while the page is open flashes once (wiring.js flash). */
+@keyframes rowlanded{0%{background:rgba(110,168,255,.14)}100%{background:transparent}}
+.btable tr.new td{animation:rowlanded 2.4s ease-out}
+@media (prefers-reduced-motion:reduce){.btable tr.new td{animation:none}}
+/* Loading and empty. */
+.btable tr.bskel td{height:52px}
+.btable tr.bskel .skel.line{width:44px;margin-left:auto}
+.btable tr.bskel td:first-child .skel.line{margin-left:0}
+.bskt{display:flex;align-items:center;gap:10px}
+.skel.bdot{width:30px;height:30px;min-width:0;border-radius:50%;flex:none}
+.btable tr.bempty td{height:auto;padding:0}
+.btable tr.bempty:hover td{background:none}
+.btable .empty{padding:48px 20px}
+
+/* Narrower windows: the columns a trader reads least give way first. */
+@media (max-width:1180px){
+  .btable .c-top,.btable .c-bun{display:none}
+  .btable th,.btable td{padding-left:10px;padding-right:10px}
+}
+@media (max-width:980px){
+  .btable .c-dev{display:none}
+}
+@media (max-width:860px){
+  .btable .c-hold{display:none}
+  .bname{max-width:120px}
+}
+
+/* ---- the Columns view (U3) ---------------------------------------------
+   The heading's Table | Columns switch, beside the verdict note. In Columns
+   the toolbar's sort gives way to a line saying each column keeps its own
+   order. Then three lists in the box, each with its header (title, count,
+   what it holds) and its own scroll within the window's height; each launch
+   a compact card. Below 960px the three are tabs, one list at a time in the
+   page's own scroll (see below). */
+.bhr{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+.bhr .bnote{margin-left:0}
+.bsortnote{display:none;font-size:12px;color:var(--tx3)}
+.bbox[data-view=cols] .bsort{display:none}
+.bbox[data-view=cols] .bsortnote{display:inline}
+.btable[hidden],.bcols[hidden]{display:none}
+
+.bcols{padding:10px}
+.bcols .bctabs{display:none}
+.bcgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.bcols[data-empty="1"] .bcgrid,.bcols[data-empty="1"] .bctabs{display:none}
+.bcempty:empty{display:none}
+.bcol{display:flex;flex-direction:column;min-width:0;min-height:0;height:calc(100vh - 250px);min-height:420px;
+  background:var(--bg);border:1px solid var(--line2);border-radius:var(--r-md)}
+.bchd{display:flex;align-items:baseline;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line2);white-space:nowrap}
+.bchd h2{margin:0;font-size:13.5px;font-weight:700;letter-spacing:-.01em}
+.bcn{font-style:normal;font-size:11px;font-weight:600;color:var(--tx3);background:var(--card3);border-radius:var(--r-pill);padding:1px 7px}
+.bcn:empty{display:none}
+.bchd > span{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:11.5px;color:var(--tx3)}
+.bclist{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:6px;display:flex;flex-direction:column;gap:2px;
+  scrollbar-width:thin;scrollbar-color:var(--card3) transparent}
+.bcnone{margin:0;padding:28px 12px;text-align:center;font-size:12.5px;color:var(--tx3)}
+
+/* A card: the face down the left; symbol and name, then the market cap on
+   the right; age, holders and graduation under them; the verdict and the
+   trade bar across the foot. */
+.bmini{display:grid;grid-template-columns:30px minmax(0,1fr) auto;grid-template-areas:"face nm mc" "face meta meta" "foot foot foot";
+  column-gap:10px;row-gap:3px;align-items:center;padding:10px;border-radius:var(--r-sm);border:1px solid transparent;
+  cursor:pointer;transition:background .1s ease,border-color .1s ease}
+.bmini:hover{background:var(--hover);border-color:var(--line2)}
+.bmini:focus-visible{outline:none;border-color:var(--acc);background:var(--hover)}
+.bmini > .ringwrap{grid-area:face;align-self:start;margin-top:2px}
+.bmini .btnm{grid-area:nm;flex-direction:row;align-items:baseline;gap:8px}
+/* The symbol keeps its whole width and the name takes what is left, cut
+   with an ellipsis (U8: a long name squeezed the symbol to "A…"). Only a
+   symbol wider than the card itself is cut, inside its own box. */
+.bmini .btnm b{flex:0 0 auto;min-width:0;max-width:100%}
+.bmini .bsym{max-width:none;min-width:0;white-space:nowrap}
+.bmini .btnm b .ltag{flex:none}
+.bmini .bname{flex:1 1 0;min-width:0;max-width:none;white-space:nowrap}
+.bmc{grid-area:mc;font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+.bmeta{grid-area:meta;display:flex;gap:4px 12px;flex-wrap:wrap;font-size:11.5px;color:var(--tx3)}
+.bmeta .amb{color:var(--amb)}
+.bmfoot{grid-area:foot;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+.bmfoot .bd.band{font-size:10.5px;padding:3px 9px}
+.bmfoot .tradebar{margin-left:auto;flex-wrap:wrap;justify-content:flex-end;row-gap:6px}
+.bmfoot .tradebar .btn.sm{padding:5px 11px}
+.bmfoot .tradebar .hold{font-size:11px;color:var(--tx3);font-family:var(--mo);white-space:nowrap}
+@keyframes cardlanded{0%{background:rgba(110,168,255,.14)}100%{background:transparent}}
+.bmini.new{animation:cardlanded 2.4s ease-out}
+@media (prefers-reduced-motion:reduce){.bmini.new{animation:none}}
+.bmini.bskel{grid-template-areas:"face nm nm" "face meta meta";cursor:default}
+.bmini.bskel:hover{background:none;border-color:transparent}
+.bmini.bskel .skel.bdot{grid-area:face}
+.bmini.bskel .bmsk{grid-area:meta;width:120px}
+.bcempty .empty{padding:48px 20px}
+
+/* Below 960px the columns are tabs: three lists of a hundred cards stacked
+   would put Graduated a long way down, and a list scrolling inside a page
+   that scrolls is a trap on a phone. The tabs carry the counts; the column's
+   header keeps what it holds. */
+@media (max-width:960px){
+  .bcols .bctabs{display:grid;margin-bottom:10px}
+  .bctabs .n{margin-left:6px;font-size:11px;color:var(--tx3)}
+  .bcgrid{grid-template-columns:minmax(0,1fr)}
+  .bcols[data-col=new] .bcol:not([data-col=new]),
+  .bcols[data-col=near] .bcol:not([data-col=near]),
+  .bcols[data-col=grad] .bcol:not([data-col=grad]){display:none}
+  .bcol{height:auto;min-height:0}
+  .bchd h2,.bchd .bcn{display:none}
+  .bchd > span{margin-left:0}
+  .bclist{overflow:visible}
+}
+
+/* ===========================================================================
+ * TOKEN — one token's page (u-redesign.md, U4).
+ *
+ * The demo's token page (design/redesign-demo): the header, then the chart
+ * panel with its four figures and the tabs panel down the left, the trade
+ * panel on the right, sticky under the top bar. Below 960 the three stack,
+ * the trade panel between the chart and the tabs; on a phone (phone.css) it
+ * becomes a bar over the tab bar that opens it as a sheet. An address not on
+ * the board gets the same page (pages/token.js runs the check).
+ * ======================================================================== */
+#tokbody .back{margin-bottom:-4px;text-decoration:none}
+
+/* The header: the ring, the symbol and its tags, the name, the address and
+   the age; the verdict on the right, its risk and note under it. */
+.thead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ttl{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1 1 240px}
+.tsym{display:flex;align-items:center;gap:8px;min-width:0}
+.tsym .big{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tsub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--tx3);min-width:0}
+.tname{color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.tage{white-space:nowrap}
+.tlink{font-size:12px;color:var(--tx3)}
+.tlink:hover{color:var(--tx)}
+.tface{width:56px;height:56px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:var(--card3);color:var(--tx3);font-size:20px;font-weight:700}
+.tvd{display:grid;grid-template-columns:auto auto;justify-content:end;justify-items:end;align-items:center;
+  row-gap:7px;margin-left:auto}
+.tvd > .bd{grid-column:1 / -1}
+.trisk{font-size:12px;color:var(--tx3);white-space:nowrap}
+.tvd .vnote{display:inline;margin-top:0;font-size:12px}
+.trisk + .vnote::before{content:"·";display:inline-block;margin:0 6px;color:var(--tx4)}
+
+/* The two columns: the chart and the tabs, then the trade panel. */
+.tgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+.tmain{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* The chart panel: market cap and its move, the chart, graduation, the note. */
+.tchartin{padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px}
+.tlead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.tk{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3);margin-bottom:6px}
+.tmc{display:flex;align-items:baseline;gap:9px}
+.tmc .mc{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.tmc .chg{font-size:12.5px;font-weight:600}
+.tright{text-align:right}
+.tright b{font-size:15px;font-weight:700}
+/* The axis labels sit just over their gridlines, the top one above the chart.
+   They and the last point's dot are page elements over the drawing, not
+   part of it: the drawing is stretched to the panel's width (U8: its text
+   was stretched with it, up to 1.7 times at 1440). */
+.tchart .chartwrap{margin-top:8px}
+.chartwrap .axlb{position:absolute;left:2px;transform:translateY(-100%);margin-top:-3px;font-size:10.5px;
+  line-height:1;color:var(--tx4);pointer-events:none;white-space:nowrap}
+.chartwrap span.chartdot{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;
+  background:var(--grn);box-shadow:0 0 0 2.5px var(--card);pointer-events:none}
+.chartwrap span.chartdot.down{background:var(--red)}
+.tchartnone{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:var(--r-sm)}
+/* The candle chart (tv-candlestick-chart.md, TV2): Lightweight Charts draws on
+   canvases inside .tvhost, a page element made once and moved into .tvslot
+   after each paint. The size buttons and the axis switch sit over it; the
+   hovered or last candle reads in the legend at its top left. */
+.tvbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.tvslot{position:relative}
+.tvwait{height:100%;display:flex;align-items:center;justify-content:center;color:var(--tx4);font-size:12px}
+.tvwrap,.tvhost{position:absolute;inset:0}
+.tvlegend{position:absolute;left:4px;top:2px;z-index:2;display:flex;flex-wrap:wrap;gap:2px 10px;
+  font-family:var(--mo);font-size:11px;line-height:1.5;pointer-events:none}
+.tvlegend i{font-style:normal;color:var(--tx4);margin-right:4px}
+.tvlegend b{font-weight:500;color:var(--tx2)}
+.tvlegend b.grn{color:var(--grn)} .tvlegend b.red{color:var(--red)}
+.tvattr{margin-left:auto;white-space:nowrap}
+.tvattr a{color:var(--tx3);text-decoration:none}
+.tvattr a:hover{color:var(--tx2);text-decoration:underline}
+.tgrad .bar{height:6px}
+.tgrad .barlb{margin-top:7px}
+
+/* The four figures under the chart, divided by rules. */
+.tfigs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line2)}
+.tfig{padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0;border-left:1px solid var(--line2)}
+.tfig:first-child{border-left:none}
+.tfig .lb{font-size:11px;font-weight:600;color:var(--tx3)}
+.tfig b{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.tfig small{font-size:11px;color:var(--tx3);line-height:1.45}
+
+/* The tabs panel: The check, Addresses, Your position; Re-check on the right. */
+.ttabhd{display:flex;align-items:stretch;border-bottom:1px solid var(--line2)}
+.ttabhd .tabs{flex:1;min-width:0;border-bottom:none;padding:0 16px}
+.trecheck{flex:none;border:none;background:transparent;padding:0 16px;font:inherit;font-size:12.5px;
+  font-weight:600;color:var(--acc);cursor:pointer;white-space:nowrap}
+.trecheck:hover{color:var(--tx)}
+.trecheck[disabled]{color:var(--tx4);cursor:default}
+.trecheck:focus-visible{outline:var(--ring);outline-offset:-2px}
+.tpane{padding:4px 16px 14px;min-width:0}
+.tpane > .callout{margin-top:12px}
+.tchecked{margin:12px 0 0;font-size:11.5px;color:var(--tx3)}
+.gates{display:flex;flex-wrap:wrap;gap:10px 18px;padding:12px 0;border-bottom:1px solid var(--line2)}
+.gates .gate{font-size:12.5px}
+.tfind .frow:last-child{border-bottom:none}
+.tpane .addrrow{min-height:42px}
+.tpane .addrrow .addrcopy{margin-left:auto}
+.taddrlinks{display:flex;gap:8px;flex-wrap:wrap;padding-top:12px}
+.tempty{padding:30px 12px}
+/* The Trades tab (X25b): the tape, newest first, as a grid of rows. */
+.ttape{display:grid}
+.ttr{display:grid;grid-template-columns:96px 44px minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr);gap:0 12px;
+  align-items:center;min-height:40px;border-bottom:1px solid var(--line2);font-size:12.5px}
+.ttr:last-child{border-bottom:none}
+.ttr > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ttrhd{min-height:34px;font-size:11px;font-weight:600;color:var(--tx3)}
+.ttr .c-eth,.ttr .c-tok{text-align:right}
+.ttr .c-side{font-size:11px;font-weight:700;letter-spacing:.04em}
+.ttr .c-who{display:flex;align-items:center;gap:6px}
+.ttr .c-who a{color:var(--tx2)}
+.ttr .c-who a:hover{color:var(--acc)}
+.ltag.lb{color:var(--tx2);background:var(--hover)}
+.ttapegrad{margin:12px 0 4px;font-size:12px;color:var(--tx3)}
+.ttapemore{display:flex;justify-content:center;padding-top:12px}
+/* The Holders tab (X27b): the largest holders as a grid of rows, each with a bar of its share. */
+.tasof{margin:12px 0 0;font-size:12px;color:var(--amb)}
+.thsum{margin:12px 0 6px;font-size:12.5px}
+.thmore{margin:10px 0 0;font-size:11.5px;text-align:center}
+.tholders{display:grid}
+.thr{display:grid;grid-template-columns:28px minmax(0,2fr) minmax(0,1.3fr) 76px minmax(0,1fr) minmax(0,1fr);gap:0 12px;
+  align-items:center;min-height:42px;border-bottom:1px solid var(--line2);font-size:12.5px}
+.thr:last-child{border-bottom:none}
+.thr > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thrhd{min-height:34px;font-size:11px;font-weight:600;color:var(--tx3)}
+.thr .c-pnl,.thr .c-now{text-align:right}
+.thr .c-who{display:flex;align-items:center;flex-wrap:wrap;gap:3px 6px;white-space:normal;padding:6px 0}
+.thr .c-who a{color:var(--tx2)}
+.thr .c-who a:hover{color:var(--acc)}
+.thr .c-roles{display:inline-flex;flex-wrap:wrap;gap:4px;min-width:0}
+.thr .c-pct{display:flex;align-items:center;gap:8px}
+.thbar{flex:1;min-width:24px;max-width:90px;height:5px;border-radius:3px;background:var(--line2);overflow:hidden}
+.thbar i{display:block;height:100%;background:var(--acc)}
+/* The Traders page (x29-leaderboard.md, X29b): the ranked addresses as a grid of rows, each row a link
+   to its Portfolio. The trader takes the slack; the figures share the rest, aligned right, as numbers
+   in a table line up here (no tabular figures). */
+.trhead{justify-content:space-between}
+.trcard{padding-top:6px}
+.ttraders{display:grid;margin:0 -10px}
+.trr{display:grid;grid-template-columns:34px minmax(150px,1.5fr) repeat(5,minmax(0,1fr));gap:0 14px;
+  align-items:center;min-height:44px;padding:0 10px;border-bottom:1px solid var(--line2);border-radius:8px;
+  font-size:12.5px;color:var(--tx)}
+.trr:last-child{border-bottom:none}
+.trr > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+a.trr{color:var(--tx)}
+a.trr:hover{background:var(--hover);color:var(--tx)}
+a.trr:focus-visible{outline:var(--ring);outline-offset:-2px}
+.trrhd{min-height:34px;font-size:11px;font-weight:600;color:var(--tx3)}
+.trrhd [title]{text-decoration:underline dotted var(--tx4);text-underline-offset:3px;cursor:help}
+.trr .c-pnl,.trr .c-closed,.trr .c-win,.trr .c-paper,.trr .c-last{text-align:right}
+.trr .c-pnl b{font-weight:700}
+.trr .c-pnl small{margin-left:7px;font-size:11px;color:var(--tx3)}
+.trr .c-last{color:var(--tx3)}
+.trr .c-who{display:flex;align-items:center;gap:8px;color:var(--tx2)}
+a.trr:hover .c-who{color:var(--acc)}
+.trr .rk{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:999px;
+  font-size:11.5px;font-weight:600;color:var(--tx3)}
+.trr.top1 .rk{background:rgba(255,179,64,.16);color:var(--amb)}
+.trr.top2 .rk{background:rgba(162,162,170,.16);color:var(--tx)}
+.trr.top3 .rk{background:rgba(167,139,250,.16);color:var(--vio)}
+.trr.me{background:rgba(110,168,255,.07);box-shadow:inset 3px 0 0 var(--acc)}
+.trr .unk{margin-left:5px;padding:1px 5px;border-radius:999px;background:var(--hover);font-size:10.5px;
+  color:var(--tx3);cursor:help}
+.trr .k{display:none}
+.mbar{display:inline-block;vertical-align:middle;width:34px;height:4px;margin-right:8px;border-radius:2px;
+  background:var(--line2);overflow:hidden}
+.mbar > i{display:block;height:100%}
+.mbar.g > i{background:var(--grn)}
+.mbar.a > i{background:var(--amb)}
+/* A share's figure keeps one width, so the bars before it line up down the column. */
+.trr .pv{display:inline-block;min-width:32px;text-align:right}
+.ltag.you{color:var(--acc);background:rgba(110,168,255,.14)}
+.tryou{margin:0 0 8px;font-size:12.5px}
+.tryou a{color:var(--tx)}
+.tryou a:hover{color:var(--acc)}
+.trnotes{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--tx3);max-width:760px}
+.trnotes p{margin:0}
+.trnotes a{color:var(--tx2)}
+.pfrank{color:var(--acc);font-weight:600;text-decoration:none}
+.pfrank:hover{text-decoration:underline}
+
+/* The trade panel. Sticky under the top bar (58px) on a desktop. */
+.tpanel{position:sticky;top:74px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.tpanel:empty{display:none}
+.tside.seg > button[aria-pressed=true].b{background:rgba(63,214,140,.14);color:var(--grn)}
+.tside.seg > button[aria-pressed=true].s{background:rgba(255,95,87,.14);color:#ff8a84}
+.tpre{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.tpre > button{height:34px;border-radius:9px;border:1px solid var(--line);background:transparent;
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--tx2);cursor:pointer}
+.tpre > button:hover{color:var(--tx);border-color:#34343c}
+.tpre > button[aria-pressed=true]{border-color:var(--tx);color:var(--tx);background:var(--card3)}
+.tpre > button:focus-visible{outline:var(--ring);outline-offset:2px}
+.tamt input{font-family:var(--mo)}
+.tamt input::-webkit-outer-spin-button,.tamt input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.tamt input[type=number]{-moz-appearance:textfield}
+.tunit{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none}
+.tunit #tamtusd{font-size:11px;color:var(--tx3);white-space:nowrap}
+/* Buy is green and Sell red, as on the board's rows; a buy into a failed
+   gate is red too, and says why under it. */
+.bigbtn{padding:13px 0;border-radius:13px}
+.bigbtn[data-buy]:not(.risky):not([disabled]){background:var(--grn);border-color:var(--grn);color:#04120a}
+.bigbtn[data-buy]:not(.risky):not([disabled]):hover{filter:brightness(1.08)}
+.bigbtn.sell:not([disabled]){background:var(--red);border-color:var(--red);color:#1a0404}
+.bigbtn.sell:not([disabled]):hover{filter:brightness(1.08)}
+.bigbtn:focus-visible{outline:var(--ring);outline-offset:2px}
+.twarn{color:#ff8a84;background:rgba(255,95,87,.08);border:1px solid rgba(255,95,87,.25);
+  border-radius:10px;padding:8px 10px;text-align:left}
+.trows{display:flex;flex-direction:column}
+.trows .tprow{border-bottom-style:dashed}
+.trows .tprow:last-child{border-bottom:none}
+.tfoot{border-top:1px solid var(--line2);padding-top:4px}
+.tslip{display:inline-flex;align-items:center;gap:4px;color:var(--tx3)}
+.tslip input{width:52px;height:26px;padding:0 7px;border-radius:7px;border:1px solid var(--line);
+  background:var(--bg);color:var(--tx);font:inherit;font-family:var(--mo);font-size:12px;text-align:right}
+.tslip input:hover{border-color:#34343c}
+.tslip input:focus{outline:none;border-color:var(--acc);box-shadow:var(--ring-field)}
+.tpanel .tphd h3{font-size:14.5px}
+.tpanel .cardnote{font-size:12px;line-height:1.55}
+
+/* The phone's bar and its sheet: only on a phone (phone.css shows the bar). */
+.tbar{display:none}
+.mbox.tsheet{width:min(420px,100%);gap:12px}
+.tsheetbd{display:flex;flex-direction:column;gap:12px}
+
+@media (max-width:1180px){
+  .tgrid{grid-template-columns:minmax(0,1fr) 320px}
+}
+/* One column: the chart, then the trade panel, then the tabs. */
+@media (max-width:960px){
+  .tgrid{grid-template-columns:minmax(0,1fr)}
+  .tmain{display:contents}
+  .tchart{order:1}
+  .tpanel{order:2;position:static}
+  .ttabs{order:3}
+}
+/* The phone's bar (phone.css places it): Buy solid green, as the panel's. */
+.tbar .btn.buy:not([disabled]){background:var(--grn);border-color:var(--grn);color:#04120a}
+
+/* ===========================================================================
+ * PORTFOLIO — your positions, or any address's read only (u-redesign.md, U5).
+ *
+ * The demo's portfolio: the heading, with whose positions these are under it
+ * and the lookup field on its right; the four figures as .kpi cards; then
+ * Open and Closed, each a .dtable in its box, the head sticking under the top
+ * bar as the board's does. A row's Fees opens under it. Columns give way as
+ * the window narrows, so nothing scrolls sideways; the phone's stacked rows
+ * are phone.css's.
+ * ======================================================================== */
+.pfpage{gap:16px}
+.pfhead{justify-content:space-between}
+.pfttl{min-width:0}
+.pfhead h1{font-size:24px;letter-spacing:-.03em}
+.pfsub{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:6px;font-size:12.5px;color:var(--tx3)}
+.pfwho{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px 8px;color:var(--tx2)}
+.pfro{color:var(--tx)}
+.pfhdslot{margin-left:auto;max-width:100%}
+.field.pfq{width:360px;max-width:100%;padding:0 4px 0 12px;gap:8px;background:var(--card);color:var(--tx3)}
+.field.pfq input{padding:8px 0;font-size:12.5px}
+.field.pfq .btn{flex:none;padding:5px 11px}
+.pfbody{display:flex;flex-direction:column;gap:18px;min-width:0}
+.pfbody:empty{display:none}
+.pfsec{display:flex;flex-direction:column;gap:10px;min-width:0}
+.pfsechd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:30px}
+.pfsechd h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.02em}
+.pfsechd .sp{flex:1}
+.pfcount{font-size:11px;font-weight:600;color:var(--tx3);background:var(--card3);border-radius:var(--r-pill);padding:1px 8px}
+.pfmeta{font-size:12px;color:var(--tx3)}
+
+.pfbox{overflow:hidden;overflow:clip}
+.pftable th{top:58px;border-bottom-color:var(--line2)}
+.pftable td{font-size:12.5px}
+.pftable th.c-act,.pftable td.c-act,.pftable th.c-more,.pftable td.c-more{width:1%;text-align:right}
+.pftable td.c-more{padding-left:0}
+.pftable .tradebar{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.pftable .tradebar .btn.sm{padding:5px 11px}
+.pftable .bd.band{font-size:10.5px;padding:3px 9px}
+.pftable .btnm b{flex-wrap:wrap;row-gap:2px}
+.pftable .bsym{flex:none;max-width:100%}
+.pfsym{color:inherit}
+.pfsym:hover{color:var(--acc)}
+.pfpnl{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.3}
+.pfpnl b{font-weight:700}
+.pfpnl small{font-size:11px}
+.pfmore{font:inherit;font-size:12px;color:var(--tx3);background:none;border:none;border-radius:var(--r-xs);padding:6px 6px;white-space:nowrap}
+.pfmore[aria-expanded=true]{color:var(--tx)}
+.pfmore:focus-visible{outline:var(--ring);outline-offset:1px}
+.pftable .c-why{white-space:normal;min-width:180px;color:var(--tx2);line-height:1.4}
+.pftx{margin-left:4px;font-size:11.5px;color:var(--tx3);white-space:nowrap}
+.pftx:hover{color:var(--acc)}
+.ltag.amb{color:var(--amb);background:rgba(255,179,64,.12)}
+/* "Your sell" (p-sell-verdict.md, P2): the pill, and what was sold is worth today. */
+.ltag.grn{color:var(--grn);background:rgba(63,214,140,.12)}
+.pftable th.c-sell,.pftable td.c-sell{width:1%;white-space:nowrap}
+.pfsell{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;line-height:1.3}
+.pfsell small{font-size:11px;color:var(--tx3)}
+
+/* What opens under a row. */
+.pftable tbody tr.link:has(+ tr.pfdetail) td{border-bottom-color:transparent}
+.pftable tr.pfdetail td{height:auto;padding:0 12px 14px;white-space:normal}
+.pftable tbody tr.pfdetail:hover td{background:none}
+.pfdet{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:12px 14px;
+  background:var(--card2);border-radius:var(--r-sm)}
+.pfkv{display:flex;flex-wrap:wrap;gap:10px 28px}
+.pfkv > div{display:flex;flex-direction:column;gap:3px}
+.pfkv i{font-style:normal;font-size:11px;color:var(--tx3)}
+.pfkv b{font-size:13px;font-weight:600}
+.pfkv a{color:var(--tx2)}
+.pfkv a:hover{color:var(--acc)}
+.pfkv .pfph{display:none}
+.pfdet .feeledger{margin-top:0;background:var(--card);width:min(520px,100%)}
+
+/* Logged out, on your own page. */
+.pfout{padding:52px 20px}
+.pfout > b{font-size:16px;color:var(--tx)}
+.pfoutrow{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:16px}
+.pfout .pfoutrow .btn{margin-top:0}
+.pfmanual{margin:0;font-size:12px;color:var(--tx3)}
+.pfmanual b{color:var(--tx2)}
+
+/* Narrower windows: the columns read least give way first. */
+@media (max-width:1180px){
+  .pftable th,.pftable td{padding-left:10px;padding-right:10px}
+  .pfopen .c-cost{display:none}
+  .pfkv .pfph-cost{display:flex}
+}
+@media (max-width:980px){
+  .pfopen .c-grad{display:none}
+  .pfkv .pfph-grad{display:flex}
+}
+@media (max-width:860px){
+  .pfopen .c-held{display:none}
+  .pfkv .pfph-held{display:flex}
+}
+
+/* ===========================================================================
+ * LEARN — How it works and About, one docs page (u-redesign.md, U6).
+ *
+ * The demo's Learn: the contents on the left, sticky under the top bar, in
+ * three groups; the page on the right. How it works is the Flow page, whose
+ * drawings are 1120 wide, so it may run to their width; About's sections are
+ * held to a reading measure. Under 960 the contents become one row that
+ * scrolls sideways above the page. The console has no contents (it has no
+ * About), so its Learn is How it works across the page, as before.
+ * ======================================================================== */
+.learn{display:none;grid-template-columns:200px minmax(0,1fr);gap:32px;align-items:start;padding:26px}
+#shell[data-page=flow] .learn,#shell[data-page=about] .learn{display:grid}
+body:not([data-mode=hosted]) .learn{grid-template-columns:minmax(0,1fr)}
+/* The console's How it works keeps the whole width it always had. */
+body:not([data-mode=hosted]) .doc{max-width:none}
+.learn .page{padding:0;min-width:0}
+.doc{max-width:780px}
+.doc.wide{max-width:1120px}
+
+.toc{position:sticky;top:84px;display:flex;flex-direction:column;gap:2px;min-width:0;
+  max-height:calc(100vh - 110px);overflow-y:auto;scrollbar-width:thin}
+.toc .tocg{margin:0;padding:16px 10px 6px;font-size:10.5px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--tx4)}
+.toc .tocg:first-child{padding-top:2px}
+.toc a{padding:7px 10px;border-radius:8px;color:var(--tx3);font-size:13px;font-weight:500;line-height:1.35}
+.toc a:hover{color:var(--tx);background:var(--card)}
+.toc a[aria-current]{color:var(--tx);background:var(--card2);font-weight:600}
+.toc a:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+
+/* About as a document: its heading and lede at the story's scale, and each
+   section's text at a reading measure, clear of the top bar when a link
+   scrolls to it. */
+#aboutbody .phead h1{font-size:30px;letter-spacing:-.04em}
+#aboutbody .phead p{font-size:15px;color:var(--tx2);max-width:62ch}
+.about{scroll-margin-top:84px}
+.about h2{font-size:18px}
+.about p,.about li{font-size:14px;line-height:1.7;max-width:65ch}
+
+/* Narrower, the contents give up some width to the drawings. */
+@media (max-width:1180px){
+  .learn{grid-template-columns:176px minmax(0,1fr);gap:24px}
+}
+/* How it works (only) takes the pill row from 1180 down, so its drawings,
+   1120 wide, keep the whole width: beside the contents they came to about
+   760 at 1024, and their smallest print could not be read (U8). About keeps
+   its contents down the side to 960. */
+@media (max-width:1180px){
+  #shell[data-page=flow] .learn{grid-template-columns:minmax(0,1fr);gap:16px}
+  #shell[data-page=flow] .toc{position:relative;top:auto;max-height:none;flex-direction:row;overflow-x:auto;
+    overflow-y:hidden;gap:4px;margin:0 -4px;padding:0 4px 2px;scrollbar-width:none}
+  #shell[data-page=flow] .toc::-webkit-scrollbar{display:none}
+  #shell[data-page=flow] .toc .tocg{display:none}
+  #shell[data-page=flow] .toc a{flex:none;white-space:nowrap;border:1px solid var(--line2)}
+  #shell[data-page=flow] .toc a[aria-current]{border-color:var(--line)}
+}
+@media (max-width:980px){
+  .learn{padding:18px max(18px,env(safe-area-inset-right)) 20px max(18px,env(safe-area-inset-left))}
+}
+@media (max-width:960px){
+  .learn{grid-template-columns:minmax(0,1fr);gap:16px}
+  .toc{position:relative;top:auto;max-height:none;flex-direction:row;overflow-x:auto;overflow-y:hidden;
+    gap:4px;margin:0 -4px;padding:0 4px 2px;scrollbar-width:none}
+  .toc::-webkit-scrollbar{display:none}
+  .toc .tocg{display:none}
+  .toc a{flex:none;white-space:nowrap;border:1px solid var(--line2)}
+  .toc a[aria-current]{border-color:var(--line)}
+}
+@media (max-width:680px){
+  .learn{padding:16px max(16px,env(safe-area-inset-right)) 20px max(16px,env(safe-area-inset-left))}
+  .toc a{display:inline-flex;align-items:center;min-height:44px;padding:0 13px}
+  #aboutbody .phead h1{font-size:26px}
+  .about{scroll-margin-top:70px}
+}
+
+/* ===========================================================================
+ * THE CONSOLE — the self pages in the new frame (u-redesign.md, U8).
+ *
+ * The operator's pages keep their words, ids and behaviour; what changes is
+ * that they are drawn with U0's pieces, as the hosted pages are: headings at
+ * the Board's and the Portfolio's size, the filter chips as buttons that say
+ * which is chosen (aria-pressed, as the board's), the figures as .kpi stats,
+ * the canvas's tables (.tbl) with the panel's radius and head and U0's
+ * .dtable inside, and the arm switches as real buttons.
+ * ======================================================================== */
+:root{color-scheme:dark}
+.selfpg{gap:16px}
+.selfpg .phead h1{font-size:24px;letter-spacing:-.03em}
+.selfpg .phead .chips .chip{padding:5px 12px}
+.selfpg .card,.selfpg .armhero{border-radius:var(--r-lg)}
+
+/* The console's switches: the strip's cards at the panel's radius, and the
+   arm switch a button, so Tab reaches it and Space or Enter flips it. */
+.selfstrip .syscard,.selfstrip .armcard{border-radius:var(--r-md)}
+button.sw{display:block;padding:0;font:inherit;-webkit-appearance:none;appearance:none}
+.sw:focus-visible{outline:var(--ring);outline-offset:2px}
+/* The system-off banner and the page under it share their side margin. */
+.sysoff{margin:14px 26px 0}
+
+/* Figures as U0 stats. A line's own colour (up, down, a caution) is kept. */
+.kpi .grn{color:var(--grn)}
+.kpi .red{color:var(--red)}
+.kpi .amb{color:var(--amb)}
+.kpi .t4{color:var(--tx4)}
+.kpi .mtr{margin-top:2px}
+.recstats .kpi{background:var(--card2)}
+
+/* Tables: the canvas's box, as a panel; U0's table in it. Two-line cells,
+   and the last column's words (an exit reason, a verdict, a log line), wrap. */
+.tbl{border-radius:var(--r-lg)}
+.tbhd{padding:12px 16px;min-height:54px}
+.tbmeta{font-size:12px;color:var(--tx3)}
+.tbl .dtable th{position:static}
+.tbl .dtable .rt{text-align:right}
+.tbl .dtable th:first-child,.tbl .dtable td:first-child{padding-left:16px}
+.tbl .dtable th:last-child,.tbl .dtable td:last-child{padding-right:16px}
+.tbl .dtable td{padding-top:8px;padding-bottom:8px}
+.tbl .dtable td:last-child,.tbl .dtable td[colspan]{white-space:normal}
+.tbl .dtable td[colspan]{height:auto}
+.tbl .dtable .sub2{white-space:nowrap}
+
+@media (max-width:980px){
+  .sysoff{margin:14px max(18px,env(safe-area-inset-right)) 0 max(18px,env(safe-area-inset-left))}
+}
+@media (max-width:680px){
+  .sysoff{margin:12px max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left))}
+}

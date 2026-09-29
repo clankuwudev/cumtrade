@@ -1,0 +1,48 @@
+# Production's other hosts, which only redirect (L1 N3). Installed as
+# /etc/clank/redirects.d/redirects.caddy, which deploy/Caddyfile imports. Only
+# production has it: every host here is named outright, so a staging or
+# rehearsal machine that installed it would ask Let's Encrypt for names it
+# does not serve.
+#
+# Nothing here reaches Node or the gateway, and nothing is logged: a redirect
+# keeps no record of who followed it.
+
+# www goes to the apex. The page, its policy and the wallet's origin are the
+# apex's alone.
+www.clankuwu.com {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	redir https://clankuwu.com{uri} 301
+}
+
+# The site's old domain (L1 N-D4, the user, 2026-09-24), straight to the
+# trading app, cumTrade (P2b: the name people still use). The old site kept
+# every screen in the fragment, and a browser keeps the fragment across a
+# redirect, so https://cumtrade.com/#/token/0x… lands on
+# https://clankuwu.com/trade#/token/0x…. The path and query are dropped: the
+# old site had no other page.
+cumtrade.com {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	redir https://clankuwu.com/trade 301
+}
+
+# The gateway's old host. A 308, not a 301: the client repeats the same
+# method and body at the new host, so a POST to /v1/chat/completions stays a
+# POST. The gateway itself answers only api.clankuwu.com (421 "wrong host"
+# otherwise), so this block, not API_HOST, is what serves api.cumtrade.com.
+# API_HOST must name api.clankuwu.com alone, or two blocks claim this host
+# and Caddy refuses its whole config.
+api.cumtrade.com {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+		-Server
+	}
+	redir https://api.clankuwu.com{uri} 308
+}

@@ -1,0 +1,46 @@
+# clank-watch: the ledger's and the suppliers' own alarms, sent to Telegram
+# (X24, spec x24-backups-monitoring.md B9). Installed as
+# /etc/systemd/system/clank-watch.service; run hourly by its timer.
+#
+# As clank-gw, from the live gateway release, reading the ledger only. It
+# writes its state file beside the ledger. Its heartbeat hears whether it
+# ran; what it finds goes to Telegram itself (B8).
+
+[Unit]
+Description=clankbot gateway: the ledger's and suppliers' alarms
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=clank-gw
+Group=clank-gw
+WorkingDirectory=/srv/clank-gateway/current
+# The gateway's (APIMART_API_KEY, LEDGER_DB, GATEWAY_PUBLIC_HOST), then the
+# watch's own (Telegram, the floor, the heartbeat): both root-only, 0600.
+EnvironmentFile=/etc/clank/gateway.env
+EnvironmentFile=/etc/clank/watch.env
+ExecStart=/usr/local/bin/clank-watch-run
+TimeoutStartSec=5min
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/clank-gateway
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077

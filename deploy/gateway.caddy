@@ -1,0 +1,75 @@
+# The gateway at its own host (X18, spec x18-gateway-service.md S5). Installed
+# as /etc/clank/gateway.d/gateway.caddy, which deploy/Caddyfile imports. Only a
+# machine that runs the gateway has it, so the site's Caddy needs no API_HOST
+# anywhere else. Where it is installed, API_HOST must be set in Caddy's
+# environment beside SITE_HOST (`systemctl edit caddy`): without it this is a
+# block with no address, and Caddy refuses its whole config, the site's too.
+# API_HOST is one host. A host the gateway has moved away from is not added
+# here: it gets a redirect block in deploy/redirects.caddy (L1 N3), and naming
+# it in both places makes Caddy refuse the config.
+#
+# Its own host, so the session cookie is never set by or sent to the site's
+# origin (K19). Node on :8791 answers /v1/* and /healthz; nothing here is ever
+# a page. A rehearsal's local certificate is a snippet in /etc/clank/api.d/.
+
+{$API_HOST} {
+	import /etc/clank/api.d/*.caddy
+
+	# On every answer, Caddy's own 404 included: JSON and event streams only,
+	# never a document that could run.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+		X-Frame-Options DENY
+		-Server
+	}
+
+	# No encode: a compressor may hold a streamed completion back to fill a block.
+	@gateway path /v1/* /healthz
+	handle @gateway {
+		reverse_proxy 127.0.0.1:8791 {
+			# Tokens go out as they are written. There is no response timeout,
+			# so the gateway's own 20-minute stream limit is the only one (G8).
+			flush_interval -1
+			# Hold a request through a restart instead of answering 502. A call
+			# is dialled only once the new process listens, so none runs twice.
+			lb_try_duration 10s
+			lb_try_interval 250ms
+
+			# The same as on the site, except that Set-Cookie passes: sign-in
+			# sets the session cookie here, on this host only (K19).
+			header_down Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+			header_down X-Content-Type-Options nosniff
+			header_down X-Frame-Options DENY
+			header_down Content-Type "(?i)^.*(script|css).*$" "application/octet-stream"
+		}
+	}
+
+	handle {
+		respond 404
+	}
+
+	# The site's filter. Request headers go, so Authorization (a key) and
+	# Cookie (a session) are never written; response headers go, so Set-Cookie
+	# is not either. No query string and no IPs.
+	log {
+		output file /var/log/caddy/clank-gateway-access.log {
+			roll_size 50MiB
+			roll_keep 5
+		}
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp \?.*$ ""
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+				request>headers delete
+				request>tls delete
+				resp_headers delete
+				user_id delete
+			}
+		}
+	}
+}

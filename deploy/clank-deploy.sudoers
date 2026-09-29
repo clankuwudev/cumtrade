@@ -1,0 +1,7 @@
+# clank-deploy may restart the hosted service and the gateway, and start the
+# ledger's pre-deploy backup, and nothing else as root (public-release H1;
+# X18 S4; X24 B5). Installed as /etc/sudoers.d/clank-deploy, mode 0440, after
+# `visudo -cf` accepts it.
+clank-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart clank-hosted
+clank-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart clank-gateway
+clank-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl start clank-gateway-predeploy-backup

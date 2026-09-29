@@ -1,0 +1,58 @@
+{
+  "name": "clank-uwu-model",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/cli/check.ts",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json && node scripts/check-web.mjs && node scripts/check-boundary.mjs",
+    "start": "tsx --env-file-if-exists=.env.hosted src/entry/hosted.ts",
+    "start:hosted": "tsx --env-file-if-exists=.env.hosted src/entry/hosted.ts",
+    "release:hosted": "node scripts/release-hosted.mjs",
+    "verify:live": "node scripts/verify-live.mjs",
+    "test:pnl": "tsx src/core/positions/valuation.test.ts",
+    "test:attribution": "tsx src/core/positions/attribution.test.ts",
+    "test:ledger": "tsx src/core/positions/ledger.test.ts",
+    "test:ledgerapi": "tsx src/server/ledger.test.ts",
+    "test:ledgerindex": "node --expose-gc --import tsx src/core/positions/ledgerIndex.test.ts",
+    "test:constants": "tsx src/core/market/clientConstants.test.ts",
+    "test:origin": "tsx src/server/origin.test.ts",
+    "test:gate": "tsx src/server/gate.test.ts",
+    "test:ratelimit": "tsx src/server/rateLimit.test.ts",
+    "test:record": "tsx src/core/lib/ethusd.test.ts && tsx src/core/record/ledger.test.ts && tsx src/core/record/candles.test.ts && tsx src/core/record/replayData.test.ts && tsx src/core/record/prices.test.ts",
+    "test:venue": "tsx src/core/chain.test.ts",
+    "test:curve": "tsx src/core/market/curve.test.ts",
+    "test:index": "tsx src/core/lib/follower.test.ts",
+    "test:loggate": "tsx src/core/lib/logGate.test.ts && tsx src/core/lib/launchIndex.test.ts && tsx src/server/logRetry.test.ts",
+    "test:release": "node scripts/release-hosted.test.mjs",
+    "check:publish": "node scripts/check-publish.mjs",
+    "test:publish": "node scripts/check-publish.test.mjs",
+    "test:prepare": "tsx src/server/prepare.test.ts",
+    "test:web": "node --test \"src/web/test/*.test.js\"",
+    "vendor:wallet": "node scripts/vendor-wallet.mjs",
+    "vendor:charts": "node scripts/vendor-charts.mjs",
+    "test:vendor": "node scripts/vendor-wallet.test.mjs && node scripts/vendor-wallet-facade.test.mjs && node scripts/vendor-charts.test.mjs && node scripts/vendor-charts.mjs --check",
+    "check:trusted-types": "node scripts/check-trusted-types.mjs"
+  },
+  "dependencies": {
+    "@jsquash/jpeg": "1.6.0",
+    "@jsquash/png": "3.1.1",
+    "@jsquash/resize": "2.1.1",
+    "@jsquash/webp": "1.5.0",
+    "dotenv": "^16.4.5",
+    "image-size": "2.0.4",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@coinbase/cdp-core": "0.0.126",
+    "@types/node": "^22.7.0",
+    "esbuild": "0.28.2",
+    "lightweight-charts": "5.2.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

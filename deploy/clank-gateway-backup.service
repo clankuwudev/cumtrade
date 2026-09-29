@@ -1,0 +1,39 @@
+# The ledger's nightly copy, encrypted and sent off the box (X24, spec
+# x24-backups-monitoring.md B2-B5). Installed as
+# /etc/systemd/system/clank-gateway-backup.service; run by its timer.
+#
+# Root, because it encrypts and uploads; the copy itself is taken as clank-gw
+# (runuser), the ledger's owner. It writes only /var/lib/clank-gateway: the
+# second connection's -wal and -shm beside the ledger, and the backups.
+
+[Unit]
+Description=clankbot gateway: the ledger's nightly backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Root-only, 0600: AGE_RECIPIENT, B2_*, HC_BACKUP_URL. See deploy/backup.env.example.
+EnvironmentFile=/etc/clank/backup.env
+ExecStart=/usr/local/bin/clank-gateway-backup nightly
+# Three tries at the bucket, ten minutes apart.
+TimeoutStartSec=45min
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/clank-gateway
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+UMask=0077

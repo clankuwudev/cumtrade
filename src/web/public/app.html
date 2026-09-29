@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cumTrade · Clank Uwu Model</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="clank-token" content="__CLANK_TOKEN__">
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/phone.css">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+</head>
+<body>
+
+<div class="shell" id="shell" data-page="launches">
+
+  <!-- ===================== the top bar (u-redesign.md, U1) =====================
+       The logo, the pages, search, and on the right the live dot, the ETH
+       price, the buy size and the one wallet button. Sticky, on every page. -->
+  <header class="top" id="top">
+    <div class="topin">
+      <a class="logo" href="#/" aria-label="Board">
+        <span class="mk pic"><img src="/apple-touch-icon.png" alt="" width="28" height="28"></span>
+        <span class="lname"><b id="brand">Clank Uwu Model</b><span class="stage" id="stagebadge" data-hosted-only hidden></span></span>
+      </a>
+
+      <nav class="tnav" aria-label="Pages">
+        <a href="#/" data-nav="board">Board</a>
+        <a href="#/portfolio" data-nav="portfolio" data-hosted-only>Portfolio</a>
+        <a href="#/portfolio" data-nav="portfolio" data-self-only>Positions</a>
+        <a href="#/traders" data-nav="traders" data-hosted-only>Traders</a>
+        <a href="#/learn/how-it-works" data-nav="learn">Learn</a>
+        <a href="/ai" data-nav="ai" data-hosted-only>cumAI</a>
+        <a href="#/sniper" data-nav="sniper" data-self-only>Sniper</a>
+        <a href="#/activity" data-nav="activity" data-self-only>Activity</a>
+      </nav>
+
+      <!-- Search is the checker: board tokens by name, or any address pasted
+           (pages/search.js). Ctrl+K, Cmd+K and / open it too. -->
+      <button class="tsearch" type="button" id="opensearch" data-search aria-haspopup="dialog"
+        aria-keyshortcuts="Control+K Meta+K /"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="tsw">Search token, or paste any address</span><kbd class="kbd" id="searchkey">Ctrl K</kbd></button>
+
+      <span class="sp"></span>
+
+      <span class="tlive" id="livepill" role="status" title="connecting…"><span class="dot n"></span><span class="sr">connecting…</span></span>
+      <span class="tstat" id="pricepill">ETH <b>—</b></span>
+
+      <!-- The quick-buy size: every Buy button on the site uses it (trade.js). -->
+      <div class="tsize">
+        <button class="tchip" type="button" id="sizebtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="sizepop"
+          title="Quick buy size"><span class="bolt" aria-hidden="true">⚡</span><span class="lbl">Buy</span><b id="sizelbl">—</b><span class="car" aria-hidden="true">▾</span></button>
+        <div class="pop" id="sizepop" role="dialog" aria-label="Quick buy size" hidden>
+          <div class="qbuy" id="qbuy">
+            <span class="qlb">Quick buy size</span>
+            <div class="qrow" id="qsizes"></div>
+            <label class="field qcustom"><input id="qcustom" inputmode="decimal" placeholder="Custom amount" aria-label="Custom amount of ETH" spellcheck="false" autocomplete="off"><span class="unit">Ξ</span></label>
+            <div class="qfoot">
+              <span>Slippage</span>
+              <input id="qslip" type="number" min="0.1" max="50" step="0.1" value="3" aria-label="Slippage, percent">
+              <span>%</span>
+              <span class="sp"></span>
+              <span id="qnote"></span>
+            </div>
+            <label class="qrev" id="qrevrow" data-hosted-only hidden
+              title="Show the plan sheet before every trade, and confirm it yourself">
+              <input type="checkbox" id="qreview"> Review each trade</label>
+            <p class="qhint">Every Buy button on the site uses this size.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- The wallet button: one slot, one of these three shown. The console's
+           keystore (self), the trading wallet (W1.2), or the visitor's own
+           wallet where this origin has no trading wallet (F2). -->
+      <button class="whoami" type="button" id="whoami" title="Unlock or lock the trading wallet" data-self-only>
+        <span class="av" id="whoav">··</span>
+        <span class="wtx"><b id="whoname">No keystore</b><span class="mo" id="whoaddr">npm run wallet hot</span></span>
+        <span class="lk" id="wholk"></span>
+      </button>
+      <button class="whoami" type="button" id="tw" title="Log in to trade" data-hosted-only hidden>
+        <span class="av" id="twav">··</span>
+        <span class="wtx"><b id="twname">Log in</b><span class="mo" id="twaddr">Trading wallet</span></span>
+        <span class="lk" id="twlk"></span>
+      </button>
+      <button class="whoami" type="button" id="conn" title="Connect the wallet you trade from" data-hosted-only>
+        <span class="av" id="connav">··</span>
+        <span class="wtx"><b id="connname">Connect wallet</b><span class="mo" id="connaddr">Robinhood Chain</span></span>
+        <span class="lk" id="connlk"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- The console's switches (self only), in a strip under the top bar: the
+       whole system on or off, and the sniper's arm. -->
+  <div class="selfstrip" data-self-only>
+    <button class="syscard" id="syssw" type="button" aria-pressed="false"
+      title="Switch the whole bot on or off">
+      <span class="dot n" id="sysdot"></span>
+      <span><b id="syslb">System</b><span id="sysnote">checking…</span></span>
+      <span class="sw" aria-hidden="true"></span>
+    </button>
+    <div class="armcard safe" id="armcard">
+      <div class="armrow">
+        <span class="dot n safeonly"></span><span class="dot r armedonly"></span>
+        <b class="safeonly">Safe</b><b class="armedonly">Armed</b>
+        <p class="safeonly" id="armsafe">Dry run. Candidates are quoted and simulated, nothing is broadcast.</p>
+        <p class="armedonly" id="armdetail">Buying with a real key.</p>
+        <button class="sw" type="button" id="armsw" aria-pressed="false" aria-label="Arm the sniper"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== main ===================== -->
+  <div class="main">
+    <div class="sysoff" id="sysoff" role="status" data-self-only hidden>
+      <span class="dot n"></span>
+      <span><b>System off.</b> <span id="sysoffmsg">Not watching launches, not buying.</span></span>
+      <span class="sp"></span>
+      <button class="btn pri" id="syson" type="button">Switch on</button>
+    </div>
+    <div class="sysoff" id="twlock" role="status" data-hosted-only hidden>
+      <span class="dot a"></span>
+      <span id="twlockmsg">Logging out soon.</span>
+      <span class="sp"></span>
+      <button class="btn pri" id="twstay" type="button">Stay logged in</button>
+    </div>
+    <!-- The beta notice (public-release F5.3). pages/beta.js shows it, unless
+         this browser closed it. -->
+    <div class="sysoff betabar" id="betabar" role="note" data-hosted-only hidden>
+      <span class="dot a"></span>
+      <span><b>Beta:</b> new software, expect bugs. Keep only trading money in your trading wallet.
+        <a href="#/learn/beta">About the beta</a></span>
+      <span class="sp"></span>
+      <button class="btn" id="betaclose" type="button">Dismiss</button>
+    </div>
+
+    <!-- ===================== the board (u-redesign.md, U2) =====================
+         The front page: every launch as a row of one table (pages/launches.js).
+         The heading and its summary line, a first-visit intro (hosted), then the
+         toolbar over the table. The filter chips, the name filter and the sort
+         are the board's own state; the sort is kept in this browser. -->
+    <section class="pg on" id="pg-launches" aria-labelledby="lh1">
+      <div class="page board">
+        <div class="bintro" id="bintro" role="note" data-hosted-only hidden>
+          <span><b>Every clank.trade launch, checked the moment it lands.</b> Look before you buy, then trade
+            from your own wallet.</span>
+          <a href="#/learn/how-it-works">How it works &rarr;</a>
+          <button class="bintrox" type="button" id="bintrox" aria-label="Dismiss" title="Dismiss"><svg width="12" height="12"
+            viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round"/></svg></button>
+        </div>
+
+        <div class="phead bhead">
+          <div class="bhl">
+            <h1 id="lh1">Launches on clank.trade</h1>
+            <p class="bsum" id="lsum"></p>
+          </div>
+          <div class="bhr">
+            <div class="bnote" id="lnote"></div>
+            <div class="seg sm" id="lview" role="group" aria-label="View">
+              <button type="button" data-v="table" aria-pressed="true">Table</button>
+              <button type="button" data-v="cols" aria-pressed="false">Columns</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bbox" id="lbox" data-view="table">
+          <div class="btools">
+            <div class="chips" id="lchips" role="group" aria-label="Show">
+              <button class="chip" type="button" data-f="all" aria-pressed="true">All<span class="n"></span></button>
+              <button class="chip" type="button" data-f="CLEAN" aria-pressed="false">No issues found<span class="n"></span></button>
+              <button class="chip" type="button" data-f="CAUTION" aria-pressed="false">Caution<span class="n"></span></button>
+              <button class="chip" type="button" data-f="risky" aria-pressed="false">Risky<span class="n"></span></button>
+              <button class="chip" type="button" data-f="GRAD" aria-pressed="false">Graduated<span class="n"></span></button>
+            </div>
+            <div class="bfind">
+              <label class="field bq"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7"
+                r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round"/></svg><input id="lq" type="text" placeholder="Filter by name" aria-label="Filter by name"
+                spellcheck="false" autocomplete="off"></label>
+              <select class="bsort" id="lsort" aria-label="Sort">
+                <option value="new">Newest</option>
+                <option value="mcap">Market cap</option>
+                <option value="hold">Holders</option>
+                <option value="prog">Closest to graduation</option>
+                <option value="score">Lowest risk</option>
+              </select>
+              <span class="bsortnote" id="lsortnote">Each column keeps its own order</span>
+            </div>
+          </div>
+          <table class="dtable btable" id="ltable">
+            <thead>
+              <tr>
+                <th scope="col" class="c-tok">Token</th>
+                <th scope="col" class="num c-age" data-sort="new" aria-sort="none"><button type="button">Age</button></th>
+                <th scope="col" class="num c-mc" data-sort="mcap" aria-sort="none"><button type="button">Market cap</button></th>
+                <th scope="col" class="c-grad" data-sort="prog" aria-sort="none"><button type="button">Graduation</button></th>
+                <th scope="col" class="num c-hold" data-sort="hold" aria-sort="none"><button type="button">Holders</button></th>
+                <th scope="col" class="num c-top" title="What the ten largest holders hold">Top 10</th>
+                <th scope="col" class="num c-dev" title="What the creator bought at launch">Creator</th>
+                <th scope="col" class="num c-bun" title="What other wallets bought in the launch block">Bundle</th>
+                <th scope="col" class="c-vd" data-sort="score" aria-sort="none"><button type="button">Verdict</button></th>
+                <th scope="col" class="c-act"><span class="sr">Trade</span></th>
+              </tr>
+            </thead>
+            <tbody id="lrows"></tbody>
+          </table>
+          <div class="bcols" id="lcols" data-col="new" hidden>
+            <div class="seg full bctabs" id="lctabs" role="group" aria-label="Column">
+              <button type="button" data-col="new" aria-pressed="true">New<span class="n"></span></button>
+              <button type="button" data-col="near" aria-pressed="false">Closest<span class="n"></span></button>
+              <button type="button" data-col="grad" aria-pressed="false">Graduated<span class="n"></span></button>
+            </div>
+            <div class="bcgrid">
+              <section class="bcol" data-col="new" aria-labelledby="lch-new">
+                <header class="bchd"><h2 id="lch-new">New</h2><i class="bcn" id="lcn-new"></i>
+                  <span>Newest first, on their curve</span></header>
+                <div class="bclist" id="lcl-new"></div>
+              </section>
+              <section class="bcol" data-col="near" aria-labelledby="lch-near">
+                <header class="bchd"><h2 id="lch-near">Closest to graduation</h2><i class="bcn" id="lcn-near"></i>
+                  <span title="Furthest along their curve first">Furthest first</span></header>
+                <div class="bclist" id="lcl-near"></div>
+              </section>
+              <section class="bcol" data-col="grad" aria-labelledby="lch-grad">
+                <header class="bchd"><h2 id="lch-grad">Graduated</h2><i class="bcn" id="lcn-grad"></i>
+                  <span>On Uniswap V4, by market cap</span></header>
+                <div class="bclist" id="lcl-grad"></div>
+              </section>
+            </div>
+            <div class="bcempty" id="lcempty"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== positions ===================== -->
+    <section class="pg" id="pg-positions">
+      <div class="page pfpage" id="plookup" data-hosted-only>
+        <div class="phead pfhead">
+          <div class="pfttl">
+            <h1>Portfolio</h1>
+            <div class="pfsub" id="plsub"></div>
+          </div>
+          <div class="pfhdslot" id="plhdslot">
+            <form class="field pfq" id="plform" role="search">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <input id="pladdr" placeholder="Look up another address, 0x…" aria-label="Look up another address" spellcheck="false" autocomplete="off">
+              <button class="btn sm" id="plgo" type="submit">Look up</button>
+            </form>
+          </div>
+        </div>
+        <div class="pfbody" id="plbody"></div>
+        <p class="pfmanual"><b>Exits are manual. Nothing here sells for you.</b> P&amp;L is net of the 1% fee each way.</p>
+      </div>
+      <div class="page selfpg" data-self-only>
+        <div class="phead">
+          <div>
+            <h1>Positions</h1>
+            <p>Every buy is recorded, sniped or hand-bought. The manager values all of them on its own
+              timer but only works the exits it opened &mdash; yours are marked <b>Manual</b> and are
+              never sold for you. P&amp;L is net of the 1% fee each way, so a position opens at
+              &minus;1.99% and breaks even on a +2.03% move.</p>
+          </div>
+          <span class="sp"></span>
+          <div class="chips" id="pchips" role="group" aria-label="Show">
+            <span class="chiplb">Show</span>
+            <button class="chip" type="button" data-f="all" aria-pressed="true">All<span class="n"></span></button>
+            <button class="chip" type="button" data-f="sniped" aria-pressed="false">Sniped<span class="n"></span></button>
+            <button class="chip" type="button" data-f="manual" aria-pressed="false">Manual<span class="n"></span></button>
+            <button class="chip" type="button" data-f="paper" aria-pressed="false">Paper<span class="n"></span></button>
+          </div>
+        </div>
+
+        <div class="kpis" id="pstats"></div>
+
+        <div class="pfsechd">
+          <h2>Open</h2>
+          <span class="sp"></span>
+          <span class="pfmeta" id="pvalued"></span>
+        </div>
+
+        <div class="grid" id="pgrid" data-f="all" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
+
+        <div class="tbl">
+          <div class="tbhd">
+            <h2>Closed</h2>
+            <span class="sp"></span>
+            <span class="tbmeta">The exit reason is the record of why the manager acted &mdash; kept verbatim</span>
+          </div>
+          <table class="dtable">
+            <thead><tr>
+              <th>Token</th><th class="rt">Cost</th><th class="rt">Proceeds</th>
+              <th class="rt">P&amp;L</th><th class="rt">Held</th><th>Exit reason</th>
+            </tr></thead>
+            <tbody id="ptbody"></tbody>
+          </table>
+        </div>
+
+        <div class="tbl rec" id="record" data-self-only>
+          <div class="tbhd">
+            <h2>Track record</h2>
+            <span class="tbmeta">Every trade this wallet made, on any venue, read from the chain</span>
+            <span class="sp"></span>
+            <span class="tbmeta" id="recstatus"></span>
+            <button class="btn sm" id="recshare" type="button">Share</button>
+            <button class="btn sm" id="recrefresh" type="button">Refresh</button>
+          </div>
+          <div class="recstats" id="recstats"></div>
+          <div class="recscroll">
+            <table class="dtable">
+              <thead><tr>
+                <th>Token</th><th class="rt">Put in</th><th class="rt">Got out</th><th class="rt">P&amp;L</th>
+                <th class="rt">Sold tokens now</th><th class="rt">Best exit after</th><th>Verdict</th>
+              </tr></thead>
+              <tbody id="rectbody"></tbody>
+            </table>
+          </div>
+          <p class="recnote" id="recnote"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== traders (hosted) ===================== -->
+    <!-- The addresses that made the most on the curves (x29-leaderboard.md,
+         X29b), drawn by pages/traders.js. The console has no such page. -->
+    <section class="pg" id="pg-traders" data-hosted-only>
+      <div class="page trpage" id="trpage"></div>
+    </section>
+
+    <!-- ===================== sniper ===================== -->
+    <section class="pg" id="pg-sniper">
+      <div class="page selfpg">
+        <div class="phead">
+          <div>
+            <h1>Sniper</h1>
+            <p>What it bought, what it declined, and why. Gas bidding buys nothing on this chain, so the
+              filters below are the entire strategy.</p>
+          </div>
+          <span class="sp"></span>
+          <div class="chips" id="schips" role="group" aria-label="Feed">
+            <span class="chiplb">Feed</span>
+            <button class="chip" type="button" data-f="all" aria-pressed="true">All<span class="n"></span></button>
+            <button class="chip" type="button" data-f="sn" aria-pressed="false">Sniped<span class="n"></span></button>
+            <button class="chip" type="button" data-f="sk" aria-pressed="false">Skipped<span class="n"></span></button>
+            <button class="chip" type="button" data-f="bl" aria-pressed="false">Blocked<span class="n"></span></button>
+          </div>
+        </div>
+
+        <div class="card armhero safe" id="armhero">
+          <div>
+            <div class="ahtitle safeonly">Safe</div>
+            <div class="ahtitle armedonly">Armed</div>
+            <p class="safeonly">Dry run. Candidates are still quoted, slippage-bounded and simulated, then
+              written to positions.json &mdash; so the filters can be judged against real launches without
+              spending anything. Nothing is broadcast.</p>
+            <p class="armedonly">Broadcasting real transactions with a real key. Buys go to the sequencer
+              the moment a launch clears every interlock and filter. A transaction that would revert is
+              never sent.</p>
+          </div>
+          <div class="divider"></div>
+          <div style="display:flex;gap:26px">
+            <div style="flex:1;min-width:0">
+              <span class="lb" style="font-size:11.5px;color:var(--tx3)">Budget</span>
+              <div style="font-size:18px;font-weight:600;letter-spacing:-.025em;margin-top:5px" id="ah-budget">—</div>
+              <div class="mtr"><i id="ah-budget-bar" style="width:0%"></i></div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <span class="lb" style="font-size:11.5px;color:var(--tx3)">Slots</span>
+              <div style="font-size:18px;font-weight:600;letter-spacing:-.025em;margin-top:5px" id="ah-slots">—</div>
+              <div class="mtr"><i id="ah-slots-bar" style="width:0%"></i></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <button class="sw lg" type="button" id="ah-sw" aria-pressed="false" aria-label="Arm the sniper"></button>
+            <span style="font-size:11px;color:var(--tx4);font-weight:500" class="safeonly">Arm</span>
+            <span style="font-size:11px;color:var(--red);font-weight:500" class="armedonly">Disarm</span>
+            <span style="font-size:10.5px;color:var(--tx4);text-align:center;max-width:110px;line-height:1.4"
+              id="ah-life"></span>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="card cardpad">
+            <div class="cardhd"><h3>Sizing</h3><span class="tag">env</span></div>
+            <div id="cfg-sizing"></div>
+          </div>
+          <div class="card cardpad">
+            <div class="cardhd"><h3>Filters</h3><span class="tag">tunable</span></div>
+            <div id="cfg-filters"></div>
+          </div>
+          <div class="card cardpad">
+            <div class="cardhd"><h3>Exits</h3><span class="tag">manager</span></div>
+            <div id="cfg-exits"></div>
+          </div>
+        </div>
+
+        <div class="card cardpad">
+          <div class="cardhd"><h3>Interlocks</h3><span class="tag">sealed &mdash; not settings</span></div>
+          <p class="cardnote" style="margin-bottom:6px">A launch that fails one of these is <b style="color:var(--tx2);font-weight:600">blocked</b>,
+            not skipped. No combination of filter values changes that, which is the whole point of keeping
+            them out of the configuration above.</p>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px" id="interlocks"></div>
+        </div>
+
+        <div class="tbl">
+          <div class="tbhd">
+            <h2>Decisions</h2>
+            <span class="sp"></span>
+            <span class="tbmeta">Every launch the sniper judged &middot; newest first</span>
+          </div>
+          <div class="feed" id="dfeed" data-f="all"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== token (u-redesign.md, U4) =====================
+         One token: its chart, the check, its addresses, your position and the
+         trade panel (pages/token.js). An address not on the board gets the
+         same page, which runs the deep check: search is the checker. -->
+    <section class="pg" id="pg-token">
+      <div class="page" id="tokbody"></div>
+    </section>
+
+    <!-- ===================== activity ===================== -->
+    <section class="pg" id="pg-activity">
+      <div class="page selfpg">
+        <div class="phead">
+          <div>
+            <h1>Activity</h1>
+            <p>What this process has actually been doing. The call counters are here because RPC budget is
+              a real constraint on this chain &mdash; the public node is slow and the provider tier is capped.</p>
+          </div>
+        </div>
+
+        <div class="kpis" id="astats"></div>
+
+        <div class="tbl">
+          <div class="tbhd">
+            <h2>Session log</h2>
+            <span class="sp"></span>
+            <span class="tbmeta">Since this page was opened &mdash; not persisted</span>
+          </div>
+          <table class="dtable">
+            <thead><tr><th style="width:120px">Time</th><th style="width:120px">Event</th><th>Detail</th></tr></thead>
+            <tbody id="atbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== Learn (u-redesign.md, U6) =====================
+         One docs page: the contents on the left (pages/learn.js draws them,
+         hosted only: the console has no About), and on the right How it
+         works (#pg-flow, the Flow page, every word and drawing) or About's
+         sections (#pg-about), whichever the router shows. The two sections
+         keep their indentation inside it, so the drawings' markup is as it was. -->
+    <div class="learn">
+    <nav class="toc" id="learntoc" aria-label="Learn" data-hosted-only></nav>
+
+    <!-- ===================== flow: Learn, How it works ===================== -->
+    <section class="pg" id="pg-flow">
+      <div class="page doc wide">
+        <!-- The story (public-release F5.8): why we exist, what we do with a
+             trade, what it is built on, and what we control. It is the web
+             app's, word for word in both modes; the console says so in one
+             line of its own. Where a trade signs differs by origin, as About's
+             trust section does: [data-tw] where the page trades from the
+             trading wallet, [data-own] where it trades from the visitor's own
+             wallet. flow.js marks the section and fills every number. -->
+        <p class="storyfor" data-self-only>This is what the web app&rsquo;s visitors read</p>
+
+        <div class="phead storyhead">
+          <div>
+            <h1>Your edge on clank.trade</h1>
+            <p>Faster, checked and better informed.</p>
+          </div>
+        </div>
+        <div class="edges">
+          <div class="edge">
+            <b>Faster</b>
+            <p data-tw>No approve to click and no wallet pop-up on a trade, on a chain that serves first come,
+              first served.</p>
+            <p data-own>One click prepares a trade and checks it, ready for your wallet, on a chain that serves
+              first come, first served.</p>
+          </div>
+          <div class="edge">
+            <b>Checked</b>
+            <p>Every launch is checked the moment it lands, and every trade plan is checked again in
+              your page before it is signed.</p>
+          </div>
+          <div class="edge">
+            <b>Better informed</b>
+            <p>A verdict on every launch, the check for any token, and the positions and P&amp;L of any
+              address, read from the chain.</p>
+          </div>
+        </div>
+
+        <h2 class="sthd">Why we exist</h2>
+        <div class="card cardpad storytext">
+          <p>clank.trade launches move in seconds. Robinhood Chain has no public mempool, and it orders
+            transactions first come, first served, so paying more for gas does not move you up the line.
+            The only edge is getting there first.</p>
+          <p>A browser wallet slows you down: a pop-up to confirm every trade, and an approval before a
+            sell. And some launches are impersonators, or tokens that cannot be sold.</p>
+          <p><b>We exist to give you an edge:</b> fewer clicks between you and a trade, and a verdict on
+            every token to read before you buy.</p>
+        </div>
+
+        <h2 class="sthd">What we do, from launch to sell</h2>
+        <div class="flowcard">
+          <svg width="100%" viewBox="0 0 1120 368" style="display:block;max-height:400px">
+            <path d="M136 66 H282 M276 60 l6 6-6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M354 66 H500 M494 60 l6 6-6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M572 66 H718 M712 60 l6 6-6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M790 66 H936 M930 60 l6 6-6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M1008 66 C1096 66, 1096 262, 1008 262 M1014 256 l-6 6 6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M936 262 H790 M796 256 l-6 6 6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M718 262 H572 M578 256 l-6 6 6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M500 262 H354 M360 256 l-6 6 6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M282 262 H136 M142 256 l-6 6 6 6" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+
+            <circle cx="100" cy="66" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="100" y="71" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">1</text>
+            <text x="100" y="122" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">A launch</text>
+            <text x="100" y="140" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">a new token on</text>
+            <text x="100" y="156" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">clank.trade</text>
+
+            <rect x="295" y="14" width="46" height="18" rx="9" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1"/>
+            <text x="318" y="27" text-anchor="middle" fill="#3fd68c" font-size="10" font-weight="700" letter-spacing="1.2" font-family="Schibsted Grotesk">EDGE</text>
+            <circle cx="318" cy="66" r="26" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <text x="318" y="71" text-anchor="middle" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">2</text>
+            <text x="318" y="122" text-anchor="middle" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Checked</text>
+            <text x="318" y="140" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">by our server,</text>
+            <text x="318" y="156" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">the moment it lands</text>
+
+            <circle cx="536" cy="66" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="536" y="71" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">3</text>
+            <text x="536" y="122" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">A verdict</text>
+            <text x="536" y="140" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">one of <tspan id="fs-bands">&mdash;</tspan>, on the board</text>
+            <text x="536" y="156" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">the same rules for all</text>
+
+            <circle cx="754" cy="66" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="754" y="71" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">4</text>
+            <text x="754" y="122" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">You press Buy</text>
+            <text x="754" y="140" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">one click</text>
+
+            <circle cx="972" cy="66" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="972" y="71" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">5</text>
+            <text x="972" y="122" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">A plan</text>
+            <text x="972" y="140" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">prepared by our server</text>
+
+            <rect x="949" y="210" width="46" height="18" rx="9" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1"/>
+            <text x="972" y="223" text-anchor="middle" fill="#3fd68c" font-size="10" font-weight="700" letter-spacing="1.2" font-family="Schibsted Grotesk">EDGE</text>
+            <circle cx="972" cy="262" r="26" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <text x="972" y="267" text-anchor="middle" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">6</text>
+            <text x="972" y="318" text-anchor="middle" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Checked again</text>
+            <text x="972" y="336" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">in your page, against</text>
+            <text x="972" y="352" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">its own reads of the chain</text>
+
+            <g data-tw>
+              <rect x="731" y="210" width="46" height="18" rx="9" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1"/>
+              <text x="754" y="223" text-anchor="middle" fill="#3fd68c" font-size="10" font-weight="700" letter-spacing="1.2" font-family="Schibsted Grotesk">EDGE</text>
+              <circle cx="754" cy="262" r="26" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+              <text x="754" y="267" text-anchor="middle" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">7</text>
+              <text x="754" y="318" text-anchor="middle" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Signed</text>
+              <text x="754" y="336" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">by your trading wallet,</text>
+              <text x="754" y="352" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">with no pop-up</text>
+            </g>
+            <g data-own>
+              <circle cx="754" cy="262" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+              <text x="754" y="267" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">7</text>
+              <text x="754" y="318" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Confirmed</text>
+              <text x="754" y="336" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">by you, in your</text>
+              <text x="754" y="352" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">own wallet&rsquo;s pop-up</text>
+            </g>
+
+            <circle cx="536" cy="262" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="536" y="267" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">8</text>
+            <text x="536" y="318" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sent</text>
+            <text x="536" y="336" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">first come, first served</text>
+
+            <g data-tw>
+              <rect x="295" y="210" width="46" height="18" rx="9" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1"/>
+              <text x="318" y="223" text-anchor="middle" fill="#3fd68c" font-size="10" font-weight="700" letter-spacing="1.2" font-family="Schibsted Grotesk">EDGE</text>
+              <circle cx="318" cy="262" r="26" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+              <text x="318" y="267" text-anchor="middle" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">9</text>
+              <text x="318" y="318" text-anchor="middle" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sell approved ahead</text>
+              <text x="318" y="336" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">right after the buy,</text>
+              <text x="318" y="352" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">for exactly what you hold</text>
+            </g>
+            <g data-own>
+              <circle cx="318" cy="262" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+              <text x="318" y="267" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">9</text>
+              <text x="318" y="318" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">When you sell</text>
+              <text x="318" y="336" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">an approval for exactly</text>
+              <text x="318" y="352" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">that amount, then the sell</text>
+            </g>
+
+            <g data-tw>
+              <circle cx="100" cy="262" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+              <text x="100" y="267" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">10</text>
+              <text x="100" y="318" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sell in one step</text>
+              <text x="100" y="336" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">one click, one transaction</text>
+            </g>
+            <g data-own>
+              <circle cx="100" cy="262" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+              <text x="100" y="267" text-anchor="middle" fill="#a2a2aa" font-size="14" font-weight="600" font-family="Schibsted Grotesk">10</text>
+              <text x="100" y="318" text-anchor="middle" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sold</text>
+              <text x="100" y="336" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">each step confirmed</text>
+              <text x="100" y="352" text-anchor="middle" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">in your wallet</text>
+            </g>
+          </svg>
+
+          <!-- The same drawing top to bottom, for a phone (F5.7). -->
+          <div class="flowphone" hidden>
+          <svg width="100%" viewBox="0 0 340 790">
+            <path d="M30 60 V90" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M30 138 V168" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M30 216 V246" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M30 294 V324" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M30 372 V402" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M30 450 V480" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M30 528 V558" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M30 606 V636" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M30 684 V714" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+
+            <circle cx="30" cy="36" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="30" y="41" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">1</text>
+            <text x="58" y="31" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">A launch</text>
+            <text x="58" y="49" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">a new token on</text>
+            <text x="58" y="65" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">clank.trade</text>
+
+            <rect x="286" y="93" width="46" height="18" rx="9" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1"/>
+            <text x="309" y="106" text-anchor="middle" fill="#3fd68c" font-size="10" font-weight="700" letter-spacing="1.2" font-family="Schibsted Grotesk">EDGE</text>
+            <circle cx="30" cy="114" r="20" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <text x="30" y="119" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">2</text>
+            <text x="58" y="109" text-anchor="start" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Checked</text>
+            <text x="58" y="127" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">by our server,</text>
+            <text x="58" y="143" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">the moment it lands</text>
+
+            <circle cx="30" cy="192" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="30" y="197" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">3</text>
+            <text x="58" y="187" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">A verdict</text>
+            <text x="58" y="205" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">one of <tspan id="fsp-bands">&mdash;</tspan>, on the board</text>
+            <text x="58" y="221" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">the same rules for all</text>
+
+            <circle cx="30" cy="270" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="30" y="275" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">4</text>
+            <text x="58" y="265" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">You press Buy</text>
+            <text x="58" y="283" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">one click</text>
+
+            <circle cx="30" cy="348" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="30" y="353" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">5</text>
+            <text x="58" y="343" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">A plan</text>
+            <text x="58" y="361" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">prepared by our server</text>
+
+            <rect x="286" y="405" width="46" height="18" rx="9" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1"/>
+            <text x="309" y="418" text-anchor="middle" fill="#3fd68c" font-size="10" font-weight="700" letter-spacing="1.2" font-family="Schibsted Grotesk">EDGE</text>
+            <circle cx="30" cy="426" r="20" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <text x="30" y="431" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">6</text>
+            <text x="58" y="421" text-anchor="start" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Checked again</text>
+            <text x="58" y="439" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">in your page, against</text>
+            <text x="58" y="455" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">its own reads of the chain</text>
+
+            <g data-tw>
+              <rect x="286" y="483" width="46" height="18" rx="9" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1"/>
+              <text x="309" y="496" text-anchor="middle" fill="#3fd68c" font-size="10" font-weight="700" letter-spacing="1.2" font-family="Schibsted Grotesk">EDGE</text>
+              <circle cx="30" cy="504" r="20" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+              <text x="30" y="509" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">7</text>
+              <text x="58" y="499" text-anchor="start" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Signed</text>
+              <text x="58" y="517" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">by your trading wallet,</text>
+              <text x="58" y="533" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">with no pop-up</text>
+            </g>
+            <g data-own>
+              <circle cx="30" cy="504" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+              <text x="30" y="509" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">7</text>
+              <text x="58" y="499" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Confirmed</text>
+              <text x="58" y="517" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">by you, in your</text>
+              <text x="58" y="533" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">own wallet&rsquo;s pop-up</text>
+            </g>
+
+            <circle cx="30" cy="582" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="30" y="587" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">8</text>
+            <text x="58" y="577" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sent</text>
+            <text x="58" y="595" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">first come, first served</text>
+
+            <g data-tw>
+              <rect x="286" y="639" width="46" height="18" rx="9" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1"/>
+              <text x="309" y="652" text-anchor="middle" fill="#3fd68c" font-size="10" font-weight="700" letter-spacing="1.2" font-family="Schibsted Grotesk">EDGE</text>
+              <circle cx="30" cy="660" r="20" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+              <text x="30" y="665" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">9</text>
+              <text x="58" y="655" text-anchor="start" fill="#3fd68c" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sell approved ahead</text>
+              <text x="58" y="673" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">right after the buy,</text>
+              <text x="58" y="689" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">for exactly what you hold</text>
+            </g>
+            <g data-own>
+              <circle cx="30" cy="660" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+              <text x="30" y="665" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">9</text>
+              <text x="58" y="655" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">When you sell</text>
+              <text x="58" y="673" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">an approval for exactly</text>
+              <text x="58" y="689" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">that amount, then the sell</text>
+            </g>
+
+            <g data-tw>
+              <circle cx="30" cy="738" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+              <text x="30" y="743" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">10</text>
+              <text x="58" y="733" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sell in one step</text>
+              <text x="58" y="751" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">one click, one transaction</text>
+            </g>
+            <g data-own>
+              <circle cx="30" cy="738" r="20" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+              <text x="30" y="743" text-anchor="middle" fill="#a2a2aa" font-size="13" font-weight="600" font-family="Schibsted Grotesk">10</text>
+              <text x="58" y="733" text-anchor="start" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sold</text>
+              <text x="58" y="751" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">each step confirmed</text>
+              <text x="58" y="767" text-anchor="start" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">in your wallet</text>
+            </g>
+          </svg>
+          </div>
+
+          <div class="flowlegend">
+            <s><span class="lgtag">EDGE</span>Where your edge comes from</s>
+            <span class="sp"></span>
+            <span>Our server prepares each plan. Your page checks it before anything is signed.</span>
+          </div>
+        </div>
+
+        <h2 class="sthd">What it is built on</h2>
+        <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="card cardpad">
+            <div class="cardhd"><h3>Robinhood Chain</h3></div>
+            <p class="cardnote" style="margin-top:0">Every trade lands on it, chain ID <span id="fs-chain">&mdash;</span>.
+              It has no public mempool, and it orders transactions first come, first served.</p>
+          </div>
+          <div class="card cardpad">
+            <div class="cardhd"><h3>clank.trade&rsquo;s curve, then Uniswap V4</h3></div>
+            <p class="cardnote" style="margin-top:0">A token trades on its bonding curve until it graduates, then
+              in its Uniswap V4 pool. The page trades on both. We use their contracts like anyone else.</p>
+          </div>
+          <div class="card cardpad" data-tw>
+            <div class="cardhd"><h3>Coinbase&rsquo;s embedded wallet</h3></div>
+            <p class="cardnote" style="margin-top:0">Your trading wallet. Coinbase holds its key, tied to your
+              login, and you export it once at setup, as a backup. The page logs you out after
+              <span id="fs-idle">&mdash;</span> minutes with no activity, and sends at most
+              <span id="fs-sends">&mdash;</span> transactions a minute.</p>
+          </div>
+          <div class="card cardpad" data-own>
+            <div class="cardhd"><h3>Your own wallet</h3></div>
+            <p class="cardnote" style="margin-top:0">You trade from a browser wallet of your own, and it asks you
+              to confirm every transaction. We never hold a key.</p>
+          </div>
+          <div class="card cardpad">
+            <div class="cardhd"><h3>A plan checker, in your page</h3></div>
+            <p class="cardnote" style="margin-top:0">Before anything is signed, the page checks the plan: which
+              contract it calls, what it approves, and the price, against its own reads of the chain. A plan
+              that does not match is refused.</p>
+          </div>
+          <div class="card cardpad">
+            <div class="cardhd"><h3>A server that cannot sign</h3></div>
+            <p class="cardnote" style="margin-top:0">Our server checks launches, keeps the board and prepares
+              plans. It has no code that can hold a key or sign a transaction.</p>
+          </div>
+          <div class="card cardpad">
+            <div class="cardhd"><h3>Open source, checkable</h3></div>
+            <p class="cardnote" style="margin-top:0">The page and its server are open source, under the MIT
+              licence. Each release is built from one commit, and <span class="mo">verify-live</span> compares
+              the live site with it byte for byte.
+              <a class="storylink" href="#/learn/source">About &rsaquo; Source</a></p>
+          </div>
+        </div>
+
+        <h2 class="sthd">What we control, and what we cannot</h2>
+        <div class="flowcard">
+          <svg width="100%" viewBox="0 0 1120 360" style="display:block;max-height:380px">
+            <path d="M560 12 V348" stroke="#26262c" stroke-width="1.4" fill="none"/>
+
+            <circle cx="22" cy="30" r="18" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="30" r="3.5" fill="#a2a2aa"/>
+            <text x="52" y="36" fill="#f2f2f4" font-size="17" font-weight="700" font-family="Schibsted Grotesk">We control</text>
+            <circle cx="22" cy="92" r="13" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="92" r="3.5" fill="#a2a2aa"/>
+            <text x="52" y="90" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">The checks and their rules</text>
+            <text x="52" y="108" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">the same for every token; no one can set a verdict by hand</text>
+            <circle cx="22" cy="152" r="13" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="152" r="3.5" fill="#a2a2aa"/>
+            <text x="52" y="150" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">The page code we deploy</text>
+            <text x="52" y="168" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">each release is built from one commit, and anyone can check it</text>
+            <circle cx="22" cy="212" r="13" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="212" r="3.5" fill="#a2a2aa"/>
+            <text x="52" y="210" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Our server</text>
+            <text x="52" y="228" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">the board, and the plans it prepares, which your page checks again</text>
+            <circle cx="22" cy="272" r="13" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="272" r="3.5" fill="#a2a2aa"/>
+            <text x="52" y="270" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Hiding a token&rsquo;s name or picture</text>
+            <text x="52" y="288" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">when they are abusive; never its verdict</text>
+
+            <circle cx="602" cy="30" r="18" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M595.2 23.2 l13.6 13.6M608.8 23.2 l-13.6 13.6" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="632" y="36" fill="#ff8a84" font-size="17" font-weight="700" font-family="Schibsted Grotesk">We cannot</text>
+            <circle cx="602" cy="92" r="13" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M597.1 87.1 l9.8 9.8M606.9 87.1 l-9.8 9.8" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="632" y="90" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Hold your key</text>
+            <text x="632" y="108" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">our server has no code that can hold one</text>
+            <circle cx="602" cy="152" r="13" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M597.1 147.1 l9.8 9.8M606.9 147.1 l-9.8 9.8" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="632" y="150" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Move funds from our server</text>
+            <text x="632" y="168" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">it has no code that can sign a transaction</text>
+            <g data-tw>
+              <circle cx="602" cy="212" r="13" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+              <path d="M597.1 207.1 l9.8 9.8M606.9 207.1 l-9.8 9.8" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+              <text x="632" y="210" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Withdraw to any wallet but yours</text>
+              <text x="632" y="228" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">Withdraw all sends only to the wallet you connected, read from that wallet</text>
+            </g>
+            <g data-own>
+              <circle cx="602" cy="212" r="13" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+              <path d="M597.1 207.1 l9.8 9.8M606.9 207.1 l-9.8 9.8" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+              <text x="632" y="210" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sign for you</text>
+              <text x="632" y="228" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">your own wallet asks you to confirm every transaction</text>
+            </g>
+            <circle cx="602" cy="272" r="13" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M597.1 267.1 l9.8 9.8M606.9 267.1 l-9.8 9.8" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="632" y="270" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Change a contract, the chain, a price or clank.trade</text>
+            <text x="632" y="288" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">we use them like anyone else</text>
+            <circle cx="602" cy="332" r="13" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M597.1 327.1 l9.8 9.8M606.9 327.1 l-9.8 9.8" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="632" y="330" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Reverse a transaction</text>
+            <text x="632" y="348" fill="#6d6d77" font-size="12.5" font-family="Schibsted Grotesk">a trade on the chain is final, for you and for us</text>
+          </svg>
+
+          <!-- The same drawing top to bottom, for a phone (F5.7). -->
+          <div class="flowphone" hidden>
+          <svg width="100%" viewBox="0 0 340 743">
+
+            <circle cx="22" cy="26" r="16" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="26" r="3.5" fill="#a2a2aa"/>
+            <text x="48" y="32" fill="#f2f2f4" font-size="16" font-weight="700" font-family="Schibsted Grotesk">We control</text>
+            <circle cx="22" cy="76" r="12" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="76" r="3.5" fill="#a2a2aa"/>
+            <text x="48" y="81" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">The checks and their rules</text>
+            <text x="48" y="98" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">the same for every token; no one can</text>
+            <text x="48" y="114" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">set a verdict by hand</text>
+            <circle cx="22" cy="144" r="12" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="144" r="3.5" fill="#a2a2aa"/>
+            <text x="48" y="149" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">The page code we deploy</text>
+            <text x="48" y="166" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">each release is built from one commit,</text>
+            <text x="48" y="182" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">and anyone can check it</text>
+            <circle cx="22" cy="212" r="12" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="212" r="3.5" fill="#a2a2aa"/>
+            <text x="48" y="217" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Our server</text>
+            <text x="48" y="234" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">the board, and the plans it prepares,</text>
+            <text x="48" y="250" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">which your page checks again</text>
+            <circle cx="22" cy="280" r="12" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <circle cx="22" cy="280" r="3.5" fill="#a2a2aa"/>
+            <text x="48" y="285" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Hiding a token&rsquo;s name or picture</text>
+            <text x="48" y="302" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">when they are abusive;</text>
+            <text x="48" y="318" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">never its verdict</text>
+
+            <circle cx="22" cy="360" r="16" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M15.9 353.9 l12.2 12.2M28.1 353.9 l-12.2 12.2" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="48" y="366" fill="#ff8a84" font-size="16" font-weight="700" font-family="Schibsted Grotesk">We cannot</text>
+            <circle cx="22" cy="410" r="12" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M17.4 405.4 l9.2 9.2M26.6 405.4 l-9.2 9.2" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="48" y="415" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Hold your key</text>
+            <text x="48" y="432" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">our server has no code</text>
+            <text x="48" y="448" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">that can hold one</text>
+            <circle cx="22" cy="478" r="12" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M17.4 473.4 l9.2 9.2M26.6 473.4 l-9.2 9.2" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="48" y="483" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Move funds from our server</text>
+            <text x="48" y="500" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">it has no code that can sign</text>
+            <text x="48" y="516" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">a transaction</text>
+            <g data-tw>
+              <circle cx="22" cy="546" r="12" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+              <path d="M17.4 541.4 l9.2 9.2M26.6 541.4 l-9.2 9.2" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+              <text x="48" y="551" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Withdraw to any wallet but yours</text>
+              <text x="48" y="568" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">Withdraw all sends only to the wallet</text>
+              <text x="48" y="584" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">you connected, read from that wallet</text>
+            </g>
+            <g data-own>
+              <circle cx="22" cy="546" r="12" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+              <path d="M17.4 541.4 l9.2 9.2M26.6 541.4 l-9.2 9.2" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+              <text x="48" y="551" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Sign for you</text>
+              <text x="48" y="568" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">your own wallet asks you to confirm</text>
+              <text x="48" y="584" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">every transaction</text>
+            </g>
+            <circle cx="22" cy="614" r="12" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M17.4 609.4 l9.2 9.2M26.6 609.4 l-9.2 9.2" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="48" y="619" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Change a contract, the chain,</text>
+            <text x="48" y="636" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">a price or clank.trade</text>
+            <text x="48" y="653" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">we use them like anyone else</text>
+            <circle cx="22" cy="683" r="12" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M17.4 678.4 l9.2 9.2M26.6 678.4 l-9.2 9.2" stroke="#ff5f57" stroke-width="2" stroke-linecap="round"/>
+            <text x="48" y="688" fill="#f2f2f4" font-size="14" font-weight="600" font-family="Schibsted Grotesk">Reverse a transaction</text>
+            <text x="48" y="705" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">a trade on the chain is final,</text>
+            <text x="48" y="721" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">for you and for us</text>
+          </svg>
+          </div>
+
+          <p class="honest" data-tw><b>Whoever controls the code this page runs can move what is in your
+              trading wallet while you are logged in, and that includes us.</b> That is why the trading
+            wallet is for trading money only.
+            <a class="storylink" href="#/learn/trust">About &rsaquo; Trust</a></p>
+          <p class="honest" data-own><b>Whoever controls the code this page runs could show you a different
+              plan, and that includes us.</b> Read what your wallet asks you to sign before you confirm.
+            <a class="storylink" href="#/learn/trust">About &rsaquo; Trust</a></p>
+          <p class="storycum">We hold <b id="fs-cum">&mdash;</b>, this project&rsquo;s token on clank.trade, so
+            its price matters to us. It gets the same checks as every other token.
+            <a class="storylink" href="#/learn/cum">About &rsaquo; <span id="fs-cumlink">&mdash;</span></a></p>
+        </div>
+
+        <div class="phead">
+          <div>
+            <h2 class="sthd">How a clank.trade curve works</h2>
+            <p data-self-only>Where the money actually goes on a clank.trade curve, and the two places it stops. Both of
+              these shape every exit the manager makes, and neither is obvious from the contract.</p>
+            <p data-hosted-only>Where the money actually goes on a clank.trade curve, and the two places it stops. Both
+              shape what a sell can get, and neither is obvious from the contract.</p>
+          </div>
+        </div>
+
+        <div class="flowcard">
+          <div class="bxhd" style="margin-bottom:6px">
+            <h3 style="font-size:16px">What a sell can draw from</h3>
+            <span class="sp"></span>
+            <span class="sub3" style="font-size:12px;color:var(--tx3)" id="fl-caption">Reserves on a curve</span>
+          </div>
+
+          <svg width="100%" viewBox="0 0 1120 320" style="display:block;max-height:340px">
+            <path d="M104 160 H262" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M334 138 C420 96, 486 86, 566 86" stroke="#3fd68c" stroke-width="1.6" fill="none"/>
+            <path d="M334 182 C420 224, 486 234, 566 234" stroke="#ff5f57" stroke-width="1.6" fill="none"
+              stroke-dasharray="5 5"/>
+            <path d="M634 86 H864" stroke="#3fd68c" stroke-width="1.6" fill="none"/>
+            <path d="M634 234 H864" stroke="#ff5f57" stroke-width="1.6" fill="none" stroke-dasharray="5 5"/>
+
+            <circle cx="72" cy="160" r="32" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="72" y="167" text-anchor="middle" fill="#f2f2f4" font-size="18" font-weight="600" font-family="Schibsted Grotesk">&#926;</text>
+            <text x="72" y="216" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Your buy</text>
+            <text x="72" y="234" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk" id="fl-buy">&mdash;</text>
+
+            <circle cx="298" cy="160" r="38" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="298" y="166" text-anchor="middle" fill="#a2a2aa" font-size="12" font-family="Schibsted Grotesk">AMM</text>
+            <text x="298" y="222" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Bonding curve</text>
+            <text x="298" y="240" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">constant product, virtual + real</text>
+
+            <circle cx="600" cy="86" r="32" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <text x="600" y="92" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk" id="fl-real">&mdash;</text>
+            <text x="600" y="142" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Real quote reserve</text>
+            <text x="600" y="160" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">everything anyone has ever paid in</text>
+
+            <circle cx="600" cy="234" r="32" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <text x="600" y="240" text-anchor="middle" fill="#ff8a84" font-size="13" font-weight="600" font-family="Schibsted Grotesk" id="fl-phantom">&mdash;</text>
+            <text x="600" y="290" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Phantom reserve</text>
+            <text x="600" y="308" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">seeded at launch, never paid in</text>
+
+            <circle cx="898" cy="86" r="32" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <path d="M886 86 l8 8 16-16" stroke="#3fd68c" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="898" y="142" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Drainable</text>
+            <text x="898" y="160" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">this is your exit ceiling</text>
+
+            <circle cx="898" cy="234" r="32" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M889 225 l18 18M907 225 l-18 18" stroke="#ff5f57" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="898" y="290" text-anchor="middle" fill="#ff8a84" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Locked forever</text>
+            <text x="898" y="308" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">structurally unextractable</text>
+          </svg>
+
+          <!-- The same diagram drawn top to bottom, for a phone (public-release
+               F5.7): the same nodes, colours and words. flow.js fills both. -->
+          <div class="flowphone" hidden>
+          <svg width="100%" viewBox="0 0 340 536">
+            <path d="M170 108 V130" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M170 242 C170 262, 85 258, 85 278" stroke="#3fd68c" stroke-width="1.6" fill="none"/>
+            <path d="M170 242 C170 262, 255 258, 255 278" stroke="#ff5f57" stroke-width="1.6" fill="none"
+              stroke-dasharray="5 5"/>
+            <path d="M85 398 V430" stroke="#3fd68c" stroke-width="1.6" fill="none"/>
+            <path d="M255 398 V430" stroke="#ff5f57" stroke-width="1.6" fill="none" stroke-dasharray="5 5"/>
+
+            <circle cx="170" cy="36" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="170" y="42" text-anchor="middle" fill="#f2f2f4" font-size="16" font-weight="600" font-family="Schibsted Grotesk">&#926;</text>
+            <text x="170" y="82" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Your buy</text>
+            <text x="170" y="99" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk" id="flp-buy">&mdash;</text>
+
+            <circle cx="170" cy="164" r="32" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="170" y="169" text-anchor="middle" fill="#a2a2aa" font-size="13" font-family="Schibsted Grotesk">AMM</text>
+            <text x="170" y="214" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Bonding curve</text>
+            <text x="170" y="231" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">constant product, virtual + real</text>
+
+            <circle cx="85" cy="308" r="30" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <text x="85" y="313" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk" id="flp-real">&mdash;</text>
+            <text x="85" y="356" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Real quote reserve</text>
+            <text x="85" y="373" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">everything anyone</text>
+            <text x="85" y="388" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">has ever paid in</text>
+
+            <circle cx="255" cy="308" r="30" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <text x="255" y="313" text-anchor="middle" fill="#ff8a84" font-size="13" font-weight="600" font-family="Schibsted Grotesk" id="flp-phantom">&mdash;</text>
+            <text x="255" y="356" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Phantom reserve</text>
+            <text x="255" y="373" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">seeded at launch,</text>
+            <text x="255" y="388" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">never paid in</text>
+
+            <circle cx="85" cy="460" r="30" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <path d="M73 460 l8 8 16-16" stroke="#3fd68c" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="85" y="508" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Drainable</text>
+            <text x="85" y="525" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">this is your exit ceiling</text>
+
+            <circle cx="255" cy="460" r="30" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M246 451 l18 18M264 451 l-18 18" stroke="#ff5f57" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="255" y="508" text-anchor="middle" fill="#ff8a84" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Locked forever</text>
+            <text x="255" y="525" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">structurally unextractable</text>
+          </svg>
+          </div>
+
+          <div class="flowlegend">
+            <s><span class="lgline" style="background:#3fd68c"></span>A sell can reach this</s>
+            <s><span class="lgline" style="background:#ff5f57;opacity:.8"></span>A sell can never reach this</s>
+            <span class="sp"></span>
+            <span>Ask for more than the ceiling and the curve reverts with
+              <span class="mo" style="color:var(--tx2)">InsufficientRealReserve</span> rather than filling what it can.</span>
+          </div>
+        </div>
+
+        <div class="flowcard">
+          <div class="bxhd" style="margin-bottom:6px">
+            <h3 style="font-size:16px">What happens at <span id="fl-thr">graduation</span></h3>
+            <span class="sp"></span>
+            <span class="sub3" style="font-size:12px;color:var(--tx3)" id="fl-gradnote"></span>
+          </div>
+
+          <!-- The console's drawing: its exit manager's guard, and where it sells.
+               A hosted page draws the neutral one below instead (F5.3). -->
+          <svg width="100%" viewBox="0 0 1120 300" style="display:block;max-height:320px" data-self-only>
+            <path d="M104 150 H286" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M362 130 C440 92, 520 78, 604 78" stroke="#3fd68c" stroke-width="1.6" fill="none"/>
+            <path d="M362 172 C440 208, 520 222, 604 222" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M672 222 H846" stroke="#ff5f57" stroke-width="1.6" fill="none" stroke-dasharray="5 5"/>
+
+            <circle cx="72" cy="150" r="32" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="72" y="157" text-anchor="middle" fill="#f2f2f4" font-size="18" font-weight="600" font-family="Schibsted Grotesk">&#926;</text>
+            <text x="72" y="206" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Curve raises</text>
+
+            <circle cx="324" cy="150" r="38" fill="rgba(255,179,64,.12)" stroke="rgba(255,179,64,.5)" stroke-width="1.4"/>
+            <text x="324" y="156" text-anchor="middle" fill="#ffb340" font-size="13" font-weight="600" font-family="Schibsted Grotesk" id="fl-guardpct">&mdash;</text>
+            <text x="324" y="212" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk" id="fl-guard">Guard</text>
+            <text x="324" y="230" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">EXIT_BEFORE_GRADUATION_PCT</text>
+
+            <circle cx="638" cy="78" r="32" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <path d="M626 78 l8 8 16-16" stroke="#3fd68c" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="638" y="134" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Manager exits here</text>
+            <text x="638" y="152" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">partial if the reserve cannot cover it</text>
+
+            <circle cx="638" cy="222" r="34" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="638" y="228" text-anchor="middle" fill="#a2a2aa" font-size="11.5" font-family="Schibsted Grotesk" id="fl-thr2">&mdash;</text>
+            <text x="638" y="280" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Graduation</text>
+
+            <circle cx="880" cy="222" r="34" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M870 212 l20 20M890 212 l-20 20" stroke="#ff5f57" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="880" y="280" text-anchor="middle" fill="#ff8a84" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Uniswap V4</text>
+            <text x="880" y="298" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">this bot has no sell path here</text>
+          </svg>
+
+          <!-- The same diagram drawn top to bottom, for a phone (F5.7). -->
+          <div class="flowphone" data-self-only hidden>
+          <svg width="100%" viewBox="0 0 340 534">
+            <path d="M170 92 V114" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M170 226 C170 246, 85 240, 85 262" stroke="#3fd68c" stroke-width="1.6" fill="none"/>
+            <path d="M170 226 C170 246, 255 240, 255 260" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M255 350 V410" stroke="#ff5f57" stroke-width="1.6" fill="none" stroke-dasharray="5 5"/>
+
+            <circle cx="170" cy="36" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="170" y="42" text-anchor="middle" fill="#f2f2f4" font-size="16" font-weight="600" font-family="Schibsted Grotesk">&#926;</text>
+            <text x="170" y="82" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Curve raises</text>
+
+            <circle cx="170" cy="148" r="32" fill="rgba(255,179,64,.12)" stroke="rgba(255,179,64,.5)" stroke-width="1.4"/>
+            <text x="170" y="153" text-anchor="middle" fill="#ffb340" font-size="13" font-weight="600" font-family="Schibsted Grotesk" id="flp-guardpct">&mdash;</text>
+            <text x="170" y="198" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk" id="flp-guard">Guard</text>
+            <text x="170" y="215" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">EXIT_BEFORE_GRADUATION_PCT</text>
+
+            <circle cx="85" cy="292" r="30" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <path d="M73 292 l8 8 16-16" stroke="#3fd68c" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="85" y="340" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Manager exits here</text>
+            <text x="85" y="357" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">partial if the reserve</text>
+            <text x="85" y="372" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">cannot cover it</text>
+
+            <circle cx="255" cy="292" r="32" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="255" y="297" text-anchor="middle" fill="#a2a2aa" font-size="13" font-family="Schibsted Grotesk" id="flp-thr2">&mdash;</text>
+            <text x="255" y="340" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Graduation</text>
+
+            <circle cx="255" cy="442" r="32" fill="rgba(255,95,87,.1)" stroke="rgba(255,95,87,.45)" stroke-width="1.4"/>
+            <path d="M245 432 l20 20M265 432 l-20 20" stroke="#ff5f57" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="255" y="492" text-anchor="middle" fill="#ff8a84" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Uniswap V4</text>
+            <text x="255" y="509" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">this bot has no sell</text>
+            <text x="255" y="524" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">path here</text>
+          </svg>
+          </div>
+
+          <!-- What happens to a curve at graduation, in neutral words: nothing
+               here trades for the visitor (public-release F5.3). Drawn wide,
+               and top to bottom for a phone (F5.7); flow.js fills both. -->
+          <svg width="100%" viewBox="0 0 1120 300" style="display:block;max-height:320px" data-hosted-only>
+            <path d="M104 150 H262" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M338 150 H522" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M596 136 C680 96, 740 78, 828 78" stroke="#3fd68c" stroke-width="1.6" fill="none"/>
+            <path d="M596 164 C680 204, 740 222, 828 222" stroke="#3a3a42" stroke-width="1.6" fill="none"
+              stroke-dasharray="5 5"/>
+
+            <circle cx="72" cy="150" r="32" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="72" y="157" text-anchor="middle" fill="#f2f2f4" font-size="18" font-weight="600" font-family="Schibsted Grotesk">&#926;</text>
+            <text x="72" y="206" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Curve raises</text>
+            <text x="72" y="224" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">buys add to its reserve</text>
+
+            <circle cx="300" cy="150" r="38" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="300" y="155" text-anchor="middle" fill="#a2a2aa" font-size="12" font-family="Schibsted Grotesk" id="flh-thr2">&mdash;</text>
+            <text x="300" y="212" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Threshold</text>
+            <text x="300" y="230" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">set when the token launched</text>
+
+            <circle cx="560" cy="150" r="38" fill="rgba(255,179,64,.12)" stroke="rgba(255,179,64,.5)" stroke-width="1.4"/>
+            <path d="M545 150 H573 M565 142 l8 8-8 8" stroke="#ffb340" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="560" y="212" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Graduation</text>
+            <text x="560" y="230" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">can run any moment after the threshold</text>
+
+            <circle cx="860" cy="78" r="32" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <path d="M848 78 l8 8 16-16" stroke="#3fd68c" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="860" y="134" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Uniswap V4 pool</text>
+            <text x="860" y="152" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">the reserves move here, and trading goes on</text>
+
+            <circle cx="860" cy="222" r="32" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <path d="M851 213 l18 18M869 213 l-18 18" stroke="#6d6d77" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="860" y="278" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Bonding curve</text>
+            <text x="860" y="296" text-anchor="middle" fill="#6d6d77" font-size="11.5" font-family="Schibsted Grotesk">settled: it no longer trades</text>
+          </svg>
+
+          <div class="flowphone" data-hosted-only hidden>
+          <svg width="100%" viewBox="0 0 340 546">
+            <path d="M170 108 V130" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M170 238 V260" stroke="#3a3a42" stroke-width="1.6" fill="none"/>
+            <path d="M170 384 C170 404, 85 400, 85 420" stroke="#3fd68c" stroke-width="1.6" fill="none"/>
+            <path d="M170 384 C170 404, 255 400, 255 420" stroke="#3a3a42" stroke-width="1.6" fill="none"
+              stroke-dasharray="5 5"/>
+
+            <circle cx="170" cy="36" r="26" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="170" y="42" text-anchor="middle" fill="#f2f2f4" font-size="16" font-weight="600" font-family="Schibsted Grotesk">&#926;</text>
+            <text x="170" y="82" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Curve raises</text>
+            <text x="170" y="99" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">buys add to its reserve</text>
+
+            <circle cx="170" cy="162" r="32" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <text x="170" y="167" text-anchor="middle" fill="#a2a2aa" font-size="13" font-family="Schibsted Grotesk" id="flhp-thr2">&mdash;</text>
+            <text x="170" y="212" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Threshold</text>
+            <text x="170" y="229" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">set when the token launched</text>
+
+            <circle cx="170" cy="292" r="32" fill="rgba(255,179,64,.12)" stroke="rgba(255,179,64,.5)" stroke-width="1.4"/>
+            <path d="M156 292 H184 M176 284 l8 8-8 8" stroke="#ffb340" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="170" y="342" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Graduation</text>
+            <text x="170" y="359" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">can run any moment</text>
+            <text x="170" y="374" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">after the threshold</text>
+
+            <circle cx="85" cy="452" r="30" fill="rgba(63,214,140,.12)" stroke="rgba(63,214,140,.45)" stroke-width="1.4"/>
+            <path d="M73 452 l8 8 16-16" stroke="#3fd68c" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="85" y="502" text-anchor="middle" fill="#3fd68c" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Uniswap V4 pool</text>
+            <text x="85" y="519" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">the reserves move here,</text>
+            <text x="85" y="534" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">and trading goes on</text>
+
+            <circle cx="255" cy="452" r="30" fill="#1a1a1e" stroke="#26262c" stroke-width="1.4"/>
+            <path d="M246 443 l18 18M264 443 l-18 18" stroke="#6d6d77" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="255" y="502" text-anchor="middle" fill="#f2f2f4" font-size="13" font-weight="600" font-family="Schibsted Grotesk">Bonding curve</text>
+            <text x="255" y="519" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">settled: it no</text>
+            <text x="255" y="534" text-anchor="middle" fill="#6d6d77" font-size="13" font-family="Schibsted Grotesk">longer trades</text>
+          </svg>
+          </div>
+
+          <div class="flowlegend" data-self-only>
+            <s><span class="lgline" style="background:#3fd68c"></span>Where the manager takes you</s>
+            <s><span class="lgline" style="background:#ff5f57;opacity:.8"></span>Where a position would be stranded</s>
+            <span class="sp"></span>
+            <span>Holding through graduation needs a V4 sell path that does not exist yet.</span>
+          </div>
+          <div class="flowlegend" data-hosted-only>
+            <s><span class="lgline" style="background:#3fd68c"></span>Where trading goes on</s>
+            <s><span class="lgline" style="background:#3a3a42"></span>What stops trading</s>
+            <span class="sp"></span>
+            <span>Near the threshold, a trade prepared for the curve can fail if graduation lands first, and
+              the price can jump when the pool opens.</span>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="card cardpad">
+            <div class="cardhd"><h3>The ceiling, exactly</h3></div>
+            <div class="fakeinput" style="border-radius:11px;font-family:var(--mo);color:var(--tx2);
+              display:block;line-height:1.8;padding:13px 15px;font-size:11.5px">
+              maxSellable = k / phantomQuote &minus; tokenReserve<br>
+              k = quoteReserve &times; tokenReserve
+            </div>
+            <p class="cardnote" data-self-only>Verified to the wei against on-chain quoteSell across the full range,
+              including the exact point where it starts reverting. The manager sizes to this and sells
+              twice when it has to.</p>
+            <p class="cardnote" data-hosted-only>Verified to the wei against on-chain quoteSell across the full range,
+              including the exact point where it starts reverting. A sell for more than this cannot fill in
+              one go.</p>
+          </div>
+          <div class="card cardpad" data-hosted-only>
+            <div class="cardhd"><h3>Close to graduation</h3></div>
+            <p class="cardnote" style="margin-top:0">Once a curve reaches its threshold, graduation can run at
+              any moment. A trade prepared for the curve then fails if graduation lands first, because the
+              settled curve no longer trades.</p>
+            <p class="cardnote">The check flags a curve that has reached its threshold as ready to
+              graduate. After graduation, trades go through the token&rsquo;s Uniswap V4 pool: the one the
+              factory&rsquo;s hook made, which no one else could have created.</p>
+          </div>
+          <div class="card cardpad" data-self-only>
+            <div class="cardhd"><h3>Why the guard, not graduation</h3></div>
+            <p class="cardnote" style="margin-top:0">Graduation is not a milestone for this bot, it is the
+              venue closing. The guard leaves room for a curve to cross the threshold between two valuation
+              ticks &mdash; and for the exit itself to be capped and need a second sell.</p>
+            <p class="cardnote" id="fl-guardcost">It costs something: a capped exit gives back part of the move.</p>
+          </div>
+          <div class="card cardpad">
+            <div class="cardhd"><h3>The fee, both ways</h3></div>
+            <div style="display:flex;gap:22px;padding:4px 0">
+              <div><div style="font-size:11.5px;color:var(--tx3)">In</div>
+                <div style="font-size:22px;font-weight:700;letter-spacing:-.03em;margin-top:4px" id="fl-feein">&mdash;</div></div>
+              <div><div style="font-size:11.5px;color:var(--tx3)">Out</div>
+                <div style="font-size:22px;font-weight:700;letter-spacing:-.03em;margin-top:4px" id="fl-feeout">&mdash;</div></div>
+            </div>
+            <!-- flow.js writes this in each mode's words; the markup's is the hosted page's (F5.3). -->
+            <p class="cardnote" id="fl-feenote">A position opens below water before anything moves: the fee is charged
+              on the way in and again on the way out.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== about (hosted) ===================== -->
+    <!-- About, terms and privacy (public-release F5.3), drawn by pages/about.js.
+         The console has no such page. -->
+    <section class="pg" id="pg-about" data-hosted-only>
+      <div class="page doc" id="aboutbody"></div>
+    </section>
+    </div><!-- .learn -->
+
+    <!-- The links to About, Terms and Privacy (F5.3), and the commit this page
+         was built from (public-release H1.2). A release writes the commit
+         here, and scripts/verify-live.mjs checks the live site against the
+         source at that commit. -->
+    <footer class="relfoot" data-hosted-only><span class="footlinks"><a href="#/learn">About</a><a href="#/learn/terms">Terms</a><a href="#/learn/privacy">Privacy</a><a href="https://t.me/clankuwu" target="_blank" rel="noopener noreferrer">Telegram</a></span>Release <span class="mo" id="release">local</span></footer>
+
+  </div>
+
+  <!-- ============ phone tab bar (public-release F5.7, U1) ============
+       The top bar's pages, in its order, with Search after Portfolio. Hidden
+       until phone.css shows it on a phone, where the top bar's own nav is
+       hidden instead. phone.test.js keeps the two lists the same. -->
+  <nav class="tabbar" id="tabbar" aria-label="Pages" hidden>
+    <a href="#/" data-nav="board"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="3" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>Board</a>
+    <a href="#/portfolio" data-nav="portfolio" data-hosted-only><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 15l4-5 3 3 6-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Portfolio</a>
+    <a href="#/portfolio" data-nav="portfolio" data-self-only><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 15l4-5 3 3 6-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Positions</a>
+    <a href="#/traders" data-nav="traders" data-hosted-only><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 16V11M10 16V5M16 16V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Traders</a>
+    <button type="button" data-search aria-haspopup="dialog"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Search</button>
+    <a href="#/learn/how-it-works" data-nav="learn"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4.5h5a2 2 0 012 2V16a1.5 1.5 0 00-1.5-1.5H4zM16 4.5h-5a2 2 0 00-2 2V16a1.5 1.5 0 011.5-1.5H16z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Learn</a>
+    <a href="/ai" data-nav="ai" data-hosted-only><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5l1.7 4.6 4.8 1.9-4.8 1.9L10 15.5l-1.7-4.6-4.8-1.9 4.8-1.9z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M15.5 13.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" fill="currentColor"/></svg>cumAI</a>
+    <a href="#/sniper" data-nav="sniper" data-self-only><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><path d="M12 1.8v3.6M12 18.6v3.6M1.8 12h3.6M18.6 12h3.6"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/></svg>Sniper</a>
+    <a href="#/activity" data-nav="activity" data-self-only><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></svg>Activity</a>
+  </nav>
+</div>
+
+<div id="toasts"></div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

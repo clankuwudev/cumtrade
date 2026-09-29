@@ -1,0 +1,5 @@
+# For a rehearsal on a machine with no public DNS name: Caddy signs the site
+# with its own local CA instead of asking Let's Encrypt. Copy to
+# /etc/clank/site.d/local-tls.caddy. Never on a real server.
+
+tls internal
