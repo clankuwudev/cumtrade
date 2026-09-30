@@ -10,11 +10,13 @@ import {
   BOARD_ROWS, FEATURED, GATEWAY, VIEWS, ago, boardRows, bonding, cap, dotColors, fetchBoard, fetchModels, fillCount,
   forwardTarget, maker, summarize, tokenHref, tokens, usd,
 } from "../public/landing/live.js";
+import { calculatorRows, dollars, livePrices, monthCost } from "../public/landing/live.js";
+import { PRICE_BOOK, RECORDED } from "../public/landing/prices.js";
 
 const PUBLIC = fileURLToPath(new URL("../public/", import.meta.url));
 const html = readFileSync(`${PUBLIC}landing/index.html`, "utf8");
 const css = readFileSync(`${PUBLIC}landing/landing.css`, "utf8");
-const js = ["landing.js", "live.js"].map((f) => readFileSync(`${PUBLIC}landing/${f}`, "utf8")).join("\n");
+const js = ["landing.js", "live.js", "prices.js"].map((f) => readFileSync(`${PUBLIC}landing/${f}`, "utf8")).join("\n");
 const models = JSON.parse(readFileSync(fileURLToPath(new URL("./fixtures/gateway-models.json", import.meta.url)), "utf8"));
 
 // ------------------------------------------------------------ the markup --
@@ -33,7 +35,7 @@ test("it loads one module and one stylesheet, its own, and no wallet", () => {
   assert.deepEqual(sheets, ["/landing/landing.css"]);
   assert.doesNotMatch(html + js, /vendor\/|js\/wallet|wallet\.js/);
   const imports = [...js.matchAll(/\bfrom\s+"([^"]+)"|import\(\s*"([^"]+)"/g)].map((m) => m[1] ?? m[2]);
-  assert.deepEqual(imports, ["./live.js"], "the module imports its own helpers, nothing else");
+  assert.deepEqual(imports, ["./live.js", "./prices.js"], "the module imports its own helpers and price book, nothing else");
 });
 
 test("the release can render it: one release slot, and every asset it names is served", () => {
@@ -42,7 +44,7 @@ test("the release can render it: one release slot, and every asset it names is s
   assert.ok(page.includes(`id="release">${sha}<`));
   for (const a of assets) assert.ok(existsSync(`${PUBLIC}${a}`), a);
   assert.deepEqual([...new Set(assets)].sort(), ["apple-touch-icon.png", "favicon-32.png", "landing/landing.css", "landing/landing.js",
-    "landing/cumos-clankchan.webp", "landing/cumos-clankchan.mp4", "landing/sky.webp"].sort());
+    "landing/cumos-clankchan.webp", "landing/cumos-clankchan.mp4", "landing/sky.webp", "landing/cumai-models.webp"].sort());
 });
 
 test("its links go to the app's paths, its own sections, or out with noopener", () => {
@@ -50,9 +52,9 @@ test("its links go to the app's paths, its own sections, or out with noopener", 
   const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
   for (const [href, tag] of hrefs) {
     if (href.startsWith("#")) assert.ok(ids.has(href.slice(1)), `${href} names a section on the page`);
-    else if (href.startsWith("/")) assert.match(href, /^\/(trade|ai)(#\/[a-z/]*)?$/, href);
+    else if (href.startsWith("/")) assert.match(href, /^\/(trade|ai)(#\/[a-z/]*)?$|^\/docs(#[a-z]+)?$/, href);
     else {
-      assert.match(href, /^https:\/\/(x\.com\/|t\.me\/clankuwu$)/, href);
+      assert.match(href, /^https:\/\/(x\.com\/|t\.me\/clankuwu$|robinhoodchain\.blockscout\.com\/token\/0x[0-9a-f]{40}$)/, href);
       assert.match(tag, /rel="noopener noreferrer"/, href);
     }
   }
@@ -66,7 +68,7 @@ test("the new names only: cumAI, not cumAPI, and clankuwu.com, not cumtrade.com 
     assert.doesNotMatch(text, /cumtrade/, name);
   }
   assert.match(html, /cumAI/);
-  assert.match(html, /https:\/\/api\.clankuwu\.com\/v1/);
+  assert.match(html, /href="\/ai#\/docs"/, "the API's details are one click away, in the docs");
 });
 
 test("no number the page cannot read live: counts are templates over words, and prices start hidden", () => {
@@ -77,14 +79,14 @@ test("no number the page cannot read live: counts are templates over words, and 
     assert.doesNotMatch(fallback, /\d/, `its words without the count: "${fallback}"`);
   }
   assert.doesNotMatch(html.replace(/data-count-tpl="[^"]*"/g, ""), /\b17[56]\b/, "no model count written into the page");
-  assert.match(html, /<div id="prices" hidden>/);
+  assert.doesNotMatch(html, /per million|\/M\b|id="prices"|\$\d+\.\d\d/, "no prices written into the page: the calculator reads the book and the gateway");
   assert.doesNotMatch(html, /Free in the playground/, "the free tier is off (X19)");
 });
 
 test("companion privacy and agency are scoped to development", () => {
   assert.doesNotMatch(html, /Prompts are never stored|Nothing here can sign/);
-  assert.match(html, /prototype saves conversation and memory/);
-  assert.match(html, /require their own permissions and release checks/);
+  assert.match(html, /Local prototype\. Public companion access is not available yet\./);
+  assert.match(html, /within boundaries you choose/);
 });
 
 test("the stylesheet reaches only our own fonts, by relative URL", () => {
@@ -177,15 +179,8 @@ const section = (id) => {
 };
 const textIn = (markup) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
-test("1. the strip is the five the user kept: OpenRouter with no Soon tag, and no Vultr or Backblaze", () => {
-  const strip = html.slice(html.indexOf('<ul class="logos">'), html.indexOf("</ul>", html.indexOf('<ul class="logos">')));
-  const names = [...strip.matchAll(/aria-label="([^"]+)"|<span>([^<]+)<\/span><\/li>/g)].map((m) => m[1] ?? m[2]);
-  assert.deepEqual(names, ["Coinbase", "Robinhood Chain", "Alchemy", "Cloudflare", "OpenRouter"]);
-  // No Soon tag in the strip itself (cumOS's card may be Soon: the user, 2026-09-27).
-  assert.doesNotMatch(strip, /class="soon"|>Soon</);
-  assert.doesNotMatch(html, /Vultr|Backblaze/);
-  // On a phone the strip is an even two-column grid, and the hero's footer drops its separators.
-  assert.match(css, /@media \(max-width:560px\)\{[^}]*\.builtwith[\s\S]*?\.logos\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+test("1. the logo strip is gone (CP3, the user, 2026-09-30), and the hero's footer drops its separators on a phone", () => {
+  assert.doesNotMatch(html, /class="logos"|class="builtwith"|OpenRouter|Vultr|Backblaze/);
   assert.match(css, /\.hero-foot \.sep\{display:none\}/);
 });
 
@@ -269,14 +264,16 @@ test("3. the board's words and numbers", () => {
   assert.equal(tokenHref(a), `/trade#/token/${a}`);
 });
 
-test("development stages are labeled and obsolete token economics are absent", () => {
-  const road = section("roadmap");
-  const words = textIn(road);
-  for (const label of ["Working locally", "Being developed", "The longer view"]) assert.ok(words.includes(label));
-  assert.doesNotMatch(html, /buys it and burns it|pays back your token|any clank.trade token|\bAPY\b|\bAPR\b/);
-  const ecosystem = textIn(section("ecosystem"));
-  assert.match(ecosystem, /xCUM — planned AI service credits/);
-  assert.match(ecosystem, /xCUM is separate from \$CUM/);
+test("the token section says what each token is, the rule to qualify, and nothing about returns", () => {
+  const tokens = textIn(section("tokens"));
+  assert.match(tokens, /Two tokens, one loop\./);
+  assert.match(tokens, /xCUM is the AI credit you spend/);
+  assert.match(tokens, /hold at least \$20 of \$CUM when an unannounced snapshot is taken/);
+  assert.match(tokens, /There is no xCUM token yet, so anything using the name today is not ours/);
+  assert.match(html, /data-addr="0xb90ad88c8ecd9f22a05cd8cb365542614f279ca9"/, "the official contract, to copy");
+  assert.match(tokens, /Planned/);
+  assert.doesNotMatch(tokens, /\d+\s?%/, "the profit split stays internal (cum-tokenomics.md O5)");
+  assert.doesNotMatch(html, /buys it and burns it|pays back your token|any clank.trade token|\bAPY\b|\bAPR\b|\byield\b|passive income/i);
 });
 
 test("no public creation flow or unsupported private-key import is offered", () => {
@@ -285,17 +282,33 @@ test("no public creation flow or unsupported private-key import is offered", () 
   assert.match(html, /href="\/trade#\/learn\/privacy"/);
 });
 
-test("cumOS leads the ecosystem direction; cumAI is the usable main action", () => {
+test("the hero names both products and the token; cumAI is the usable main action", () => {
   const hero = section("h-hero");
+  assert.match(hero, /Two AI products\.<br>One token\./);
   assert.match(hero, /cumOS/);
+  assert.match(hero, /\$CUM/);
   assert.match(hero, /clank.trade ecosystem/);
-  assert.match(hero, /href="\/ai">Open cumAI/);
+  assert.match(hero, /href="\/ai">Try cumAI free/);
   assert.match(html, /id="cumos"/);
   assert.match(html, /cumOS in development/);
   assert.doesNotMatch(hero, /cumTrade/);
 });
 
-test("clankchan video is local, silent, labeled, and has a motion control and poster", () => {
+test("the nav: the page's three sections, then Docs, the project docs at /docs (PD, the user, 2026-09-30)", () => {
+  const nav = html.match(/<nav class="nav-links"[^>]*>(.*?)<\/nav>/)[1];
+  assert.deepEqual([...nav.matchAll(/<a href="([^"]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]),
+    [["#cumai", "cumAI"], ["#cumos", "cumOS"], ["#tokens", "Tokens"], ["/docs", "Docs"]]);
+  assert.match(html, /<h4>More<\/h4><ul><li><a href="\/docs">Docs<\/a><\/li>/, "and the footer links them too");
+});
+
+test("xCUM is the AI credit balance, burned as requests spend it, never 'turned into' credit (the user, 2026-09-30)", () => {
+  const more = html.match(/<details class="more">([\s\S]*?)<\/details>/)[1];
+  assert.match(more, /xCUM is your AI credit balance: each request spends xCUM, and the xCUM it spends is burned\./);
+  assert.match(more, /Paying for AI directly with other clank\.trade tokens is planned\./);
+  assert.doesNotMatch(html, /turn xCUM into|Turning it into credit|activat/i);
+});
+
+test("Yuna's greeting video is local, silent, labeled, and has a motion control and poster", () => {
   const video = html.match(/<video\b[^>]*>/)[0];
   assert.match(video, /muted loop playsinline preload="none"/);
   assert.match(video, /poster="\/landing\/cumos-clankchan.webp"/);
@@ -306,4 +319,53 @@ test("clankchan video is local, silent, labeled, and has a motion control and po
   assert.match(js, /prefers-reduced-motion/);
   assert.match(js, /visibilitychange/);
   assert.match(js, /IntersectionObserver/);
+});
+
+// ---------------------------------------------------- CP3: the new parts --
+
+test("the companion is Yuna (community vote, 2026-09-30): no clankchan in anything a visitor reads", () => {
+  const withoutFileNames = html.replace(/cumos-clankchan\.(webp|mp4)/g, "");
+  assert.doesNotMatch(withoutFileNames, /clankchan/i);
+  assert.match(html, /Meet Yuna/);
+  assert.match(html, /starting with Yuna\./);
+});
+
+test("the calculator: labelled fields, and honest about where each price comes from", () => {
+  assert.match(html, /<form class="calc" id="calc" aria-labelledby="h-calc">/);
+  for (const id of ["calc-model", "calc-in", "calc-out"]) assert.match(html, new RegExp(`<label for="${id}">`), id);
+  assert.match(html, /as recorded in our price book on September 30, 2026/);
+  assert.match(html, /Paid credits go on sale when xCUM launches/);
+  assert.match(js, /cumAI prices are live from the gateway/);
+});
+
+test("the price book: official prices that check out, recorded on the date the page names", () => {
+  assert.equal(RECORDED, "2026-09-30");
+  assert.ok(PRICE_BOOK.length >= 100);
+  const ids = PRICE_BOOK.map((r) => r[0]);
+  assert.equal(new Set(ids).size, ids.length, "each model once");
+  for (const [id, , oi, oo, ri, ro] of PRICE_BOOK) {
+    assert.ok([oi, oo, ri, ro].every((v) => typeof v === "number" && v > 0), id);
+    assert.ok(ri <= oi && ro <= oo, `${id}: cumAI never above official`);
+  }
+  for (const bad of ["deepseek-v4-pro", "gpt-5.5", "gpt-6-astra"]) assert.ok(!ids.includes(bad), `${bad} stays out until checked`);
+});
+
+test("the calculator's sums: live cumAI prices win, a model the gateway drops is dropped, nothing negative", () => {
+  const live = livePrices(models);
+  assert.ok(live instanceof Map && live.size > 0);
+  assert.equal(livePrices({ object: "list", data: [] }), null);
+  assert.equal(livePrices(null), null);
+  const book = [["a-1", "X", 2, 10, 1.9, 9.5], ["b-1", "X", 1, 1, 0.95, 0.95]];
+  assert.deepEqual(calculatorRows(book, new Map([["a-1", [1.6, 8]]])), [["a-1", "X", [2, 10], [1.6, 8]]]);
+  assert.deepEqual(calculatorRows(book, null).map((r) => r[3]), [[1.9, 9.5], [0.95, 0.95]], "no answer: the recorded prices");
+  const m = monthCost([2, 10], [1.9, 9.5], 50, 10);
+  assert.deepEqual([m.official, m.ours, +m.save.toFixed(2), m.pct], [200, 190, 10, 5]);
+  assert.equal(monthCost([2, 10], [1.9, 9.5], -5, Number.NaN).official, 0);
+  assert.equal(dollars(1000), "$1,000.00");
+  assert.equal(dollars(0.5), "$0.50");
+});
+
+test("the cumOS section's one action is the Telegram, now that the clip is gone", () => {
+  assert.match(section("cumos"), /href="https:\/\/t\.me\/clankuwu" target="_blank" rel="noopener noreferrer">Join the Telegram/);
+  assert.doesNotMatch(html, /id="working"|chat-demo/);
 });

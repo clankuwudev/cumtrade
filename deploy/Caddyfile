@@ -43,11 +43,11 @@
 		-Server
 	}
 
-	# The three pages, from the live release (H1.2, L1): the landing at /, the
-	# app at /trade and /console, and cumAI at /ai (L4b). release-hosted.mjs
-	# rendered each for its commit and wrote each one's policy, from
-	# landingPageHeaders(), hostedPageHeaders() and aiPageHeaders() in
-	# src/server/http.ts. Caddy reads a policy file on each request, so a
+	# The four pages, from the live release (H1.2, L1): the landing at /, the
+	# app at /trade and /console, cumAI at /ai (L4b), and the project docs at
+	# /docs (PD). release-hosted.mjs rendered each for its commit and wrote each
+	# one's policy, from landingPageHeaders(), hostedPageHeaders(),
+	# aiPageHeaders() and docsPageHeaders() in src/server/http.ts. Caddy reads a policy file on each request, so a
 	# deploy switches a page and its policy together, and no reload is needed.
 	# The other headers are the same for every page and every release;
 	# test:release holds them equal to those functions' lists. Without its
@@ -85,6 +85,29 @@
 		rewrite * /ai.html
 		header {
 			Content-Security-Policy "{file./srv/clank/current/page/ai-policy.txt}"
+			Cross-Origin-Opener-Policy same-origin
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+			X-Content-Type-Options nosniff
+			Cache-Control no-store
+		}
+		file_server
+	}
+
+	# The project docs (PD). Installed before the first release that has them:
+	# until then this block answers 503 at /docs, and nothing links there.
+	@docs path /docs
+	handle @docs {
+		@nopolicy not file {
+			root /srv/clank/current/page
+			try_files /docs-policy.txt
+		}
+		respond @nopolicy "No docs policy in this release." 503
+
+		root * /srv/clank/current/page
+		rewrite * /docs.html
+		header {
+			Content-Security-Policy "{file./srv/clank/current/page/docs-policy.txt}"
 			Cross-Origin-Opener-Policy same-origin
 			X-Frame-Options DENY
 			Referrer-Policy no-referrer

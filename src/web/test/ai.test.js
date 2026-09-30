@@ -11,7 +11,7 @@ import { renderLanding } from "../../../scripts/release-page.mjs";
 import {
   GATEWAY, QUICK, TABS, fetchModels, hitIn, modelView, paletteModels, parseModels, scale, tabOf, thousandCalls,
 } from "../public/ai/models.js";
-import { FACES, HOST, PLAY, SUGGEST, XCUM_NOTE } from "../public/ai/words.js";
+import { FACES, HOST, KNOWN_CODES, PICTURE_CODES, PLAY, SUGGEST, SUGGEST_CARDS, SUGGEST_PICTURES, SUGGEST_PICTURE_CARDS, XCUM_NOTE, refusalTitle } from "../public/ai/words.js";
 
 const PUBLIC = fileURLToPath(new URL("../public/", import.meta.url));
 const page = readFileSync(`${PUBLIC}ai/index.html`, "utf8");
@@ -128,7 +128,7 @@ test("the release can render it, and serves every asset it names; every face she
 
 test("its links go home, to cumTrade and its terms and data API, or to its own tabs", () => {
   for (const [tag, href] of page.matchAll(/<a\b[^>]*\bhref="([^"]+)"[^>]*>/g)) {
-    assert.match(href, /^(\/|\/trade|\/trade#\/learn\/(api|terms)|#\/(playground|models|docs|status)|https:\/\/t\.me\/clankuwu)$/, href);
+    assert.match(href, /^(\/|\/trade|\/trade#\/learn\/(api|terms|privacy)|#\/(playground|models|docs|status)|https:\/\/t\.me\/clankuwu)$/, href);
     // The community's Telegram group opens with no opener and no referrer.
     if (href.startsWith("https:")) assert.match(tag, /target="_blank" rel="noopener noreferrer"/, href);
   }
@@ -139,18 +139,20 @@ test("its links go home, to cumTrade and its terms and data API, or to its own t
 });
 
 test("the Build group only: Playground, Models, Docs, Status. The Next and Roadmap panels stay hidden (C-D9)", () => {
-  const tabs = [...page.matchAll(/<a href="([^"]+)" data-ai-tab="([a-z]+)"><span>([^<]+)<\/span>/g)].map((m) => [m[1], m[2], m[3]]);
+  // Each tab an icon, then its name (AP, the user's mockup).
+  const tabs = [...page.matchAll(/<a href="([^"]+)" data-ai-tab="([a-z]+)"><svg class="cai-ico"[^>]*><path d="[^"]+"\/><\/svg><span>([^<]+)<\/span>/g)].map((m) => [m[1], m[2], m[3]]);
   assert.deepEqual(tabs, [["#/playground", "playground", "Playground"], ["#/models", "models", "Models"], ["#/docs", "docs", "Docs"], ["#/status", "status", "Status"]]);
   assert.equal([...page.matchAll(/data-ai-panel="([a-z]+)"/g)].map((m) => m[1]).join(), "playground,models,status,docs");
   assert.doesNotMatch(page, /Keys &amp; balance|Reserves|Power a token|Lock &amp; earn|OpenRouter|Supplier 1|data-ai-tab="(account|reserves|tokens|xcum|lock)"/);
   assert.doesNotMatch(page + js, /Example data|example data|demo-state/, "no example data and no demo switches (C-D10)");
 });
 
-test("only the gateway and the playground's state are said to be live; nothing unbuilt is on the page (the user: \"go trim.\")", () => {
-  const status = page.match(/<div class="cai-side-status"[\s\S]*?<\/div>\s*<\/div>/)[0];
-  assert.match(status, /gateway<b id="st-gateway">…<\/b>/, "the gateway's line is read, not written in");
-  assert.match(status, /playground<b id="st-play">…<\/b>/);
-  assert.match(status, /paid keys<b>next<\/b>/);
+test("nothing is said to be live but what the gateway says; nothing unbuilt is on the page (the user: \"go trim.\")", () => {
+  // The sidebar's status box went with the mockup (AP): the Status tab and its dot say it, read from the gateway.
+  assert.doesNotMatch(page, /cai-side-status|st-gateway|st-play|paid keys<b>/);
+  assert.match(page, /<i class="cai-sdot" id="side-st"><\/i>/);
+  // The sidebar's foot (AP): the mockup's, and "Not affiliated with clank.trade." kept (the user, 2026-09-30).
+  assert.match(page, /<p class="cai-legal">Beta\. Not financial advice\. Not affiliated with clank\.trade\.<span class="cai-legal-l"><a href="\/trade#\/learn\/terms">Terms<\/a><a href="\/trade#\/learn\/privacy">Privacy<\/a><\/span><\/p>/);
   assert.doesNotMatch(page, /xCUM<b>roadmap|cai-chip lav|tokenized inference|Index endpoints|ai-rtag">Roadmap/i, "no xCUM chip, no roadmap rows, no unbuilt endpoints");
   assert.doesNotMatch(js, /xcumBlock|xnote\(/, "the xCUM note isn't repeated in the inspector or the playground");
   // The impostor warning stays, once, in the Models panel.
@@ -221,11 +223,46 @@ test("clankchan hosts: every line is fixed words about the page, never a model's
 });
 
 test("the playground's own words: the warning above the box, the label under it, starting points that ask no advice", () => {
-  assert.equal(PLAY.warn.join(" "), "Never paste a recovery phrase or private key into a chat, or into any site you don't fully trust. Whoever has it has the wallet.");
-  assert.equal(PLAY.under, "Not financial advice, and not cumLabs support. It knows nothing live about prices. Answers can be wrong. Chats are not saved.");
+  // The user's mockup (AP, 2026-09-30): one line above the box, one under it.
+  assert.equal(PLAY.warn, "Never share a recovery phrase or private key.");
+  assert.equal(PLAY.under, "AI can be wrong. Not financial advice or cumLabs support. Chats are not saved.");
   assert.equal(PLAY.outTitle, "Sign in to chat free.");
   assert.equal(PLAY.offTitle, "The playground opens soon.");
   assert.doesNotMatch(SUGGEST.join(" "), /buy|sell|price of|launch|pump|invest/i);
+});
+
+test("the mockup's parts (AP): a card for each starting point, a title on each refusal, the account in the top bar", () => {
+  // One card per prompt, each with a label and an icon the icon set has.
+  const icons = readFileSync(`${PUBLIC}ai/icons.js`, "utf8");
+  assert.equal(SUGGEST_CARDS.length, SUGGEST.length);
+  assert.equal(SUGGEST_PICTURE_CARDS.length, SUGGEST_PICTURES.length);
+  for (const [label, name] of [...SUGGEST_CARDS, ...SUGGEST_PICTURE_CARDS]) {
+    assert.match(label, /^[A-Z][a-z]+$/, label);
+    assert.match(icons, new RegExp(`\\b${name}: "`), name);
+  }
+  assert.deepEqual(SUGGEST_CARDS.map(([l]) => l), ["Learn", "Code", "Understand", "Explore"]);
+  // A card fills the box with its prompt alone, never its label too.
+  const pg = readFileSync(`${PUBLIC}ai/playground.js`, "utf8");
+  assert.match(pg, /data-sug="\$\{s\}"/);
+  assert.match(pg, /ta\.value = sug\.dataset\.sug \?\? "";/);
+  // Every refusal has a short title, with no code or supplier in it.
+  for (const code of [...KNOWN_CODES, "some_new_code"]) {
+    const t = refusalTitle({ code });
+    assert.match(t, /^[A-Z][^.]*[a-z]$/, code);
+    assert.doesNotMatch(t, /_|APIMart|OpenRouter/i, code);
+  }
+  for (const code of [...PICTURE_CODES, "some_new_code"]) assert.match(refusalTitle({ code }, { picture: true }), /^[A-Z][^._]*$/, code);
+  assert.equal(refusalTitle({ code: "free_tier_not_eligible" }), "This wallet isn't eligible yet");
+  assert.equal(refusalTitle({ code: "network" }), "Not answering");
+  assert.equal(refusalTitle({ code: "picture_failed" }, { picture: true }), "Picture not made");
+  // The account sits in the top bar: the wallet with its menu, and Sign out; the free chip is gone.
+  assert.match(page, /<div class="cai-acct" id="hdr-acct" hidden>/);
+  assert.match(page, /<button class="cai-chip wallet" type="button" id="hdr-wallet"[^>]*aria-haspopup="menu" aria-expanded="false" aria-controls="hdr-menu">/);
+  assert.match(page, /<div class="cai-menu" id="hdr-menu" role="menu" aria-label="Account" hidden>/);
+  assert.equal((page.match(/data-act="sign-out"/g) ?? []).length, 2, "Sign out in the menu and beside it");
+  assert.doesNotMatch(page, /id="hdr-free"|id="pg-out"|id="pg-who"|id="side-count"/);
+  // Icons are fixed markup with no style of their own.
+  assert.doesNotMatch(icons + page, /<svg[^>]*\sstyle=/);
 });
 
 test("the playground checks before it sends, logs in only through cumOS's session, and sets replies as text", () => {

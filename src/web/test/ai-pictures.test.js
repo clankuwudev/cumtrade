@@ -249,7 +249,7 @@ test("a picture is checked before it goes, drawn only from a blob: URL of checke
   assert.ok(make.indexOf("S.making = new AbortController();") < make.indexOf("await "), "busy before the first wait: a double press sends once");
   // A refusal's words, the gateway's own included, are drawn as text.
   const note = pg.slice(pg.indexOf("function notice("), pg.indexOf("function centerNote("));
-  assert.match(note, /paint\(el, html`<p>\$\{r\.say\}/);
+  assert.match(note, /<b>\$\{r\.title \?\? "Not sent"\}<\/b><p>\$\{r\.say\}/, "its title, then its sentence (AP)");
   // No Stop for a picture: once asked for it is made and counts.
   assert.match(pg, /if \(S\.making\) return;\s*if \(S\.streaming\) \{/);
 });
@@ -286,7 +286,7 @@ test("the Models tab's picture prices: per picture, by size, from /v1/images/mod
   // The inspector follows the mode: in Picture mode, the picture model and today's pictures, not chat's dollars.
   const insp = ai.slice(ai.indexOf("function inspPlay("), ai.indexOf("/** A model's state"));
   assert.match(insp, /const pic = p\?\.state === "in" && p\.mode === "picture" \? picturesOffered\(p\.free\) : null;/);
-  assert.match(insp, /ib\("Today's pictures", html`\$\{kvm\(\[\["left", `\$\{left\} of \$\{picturesPerDay\(pic\)\}`, true\]/);
+  assert.match(insp, /card\("Today's pictures", "coin", html`<b class="cai-big num">\$\{`\$\{left\} of \$\{picturesPerDay\(pic\)\} left`\}<\/b>/, "pictures left, as one figure (AP)");
   assert.match(insp, /const left = picturesLeft\(pic\) \?\? picturesPerDay\(pic\);/);
   const index = readFileSync(`${PUBLIC}ai/index.html`, "utf8");
   assert.match(index, /<section class="ai-pics" id="ai-pics" aria-labelledby="ai-pics-h" hidden>/, "hidden until there is a list");

@@ -52,7 +52,8 @@ test("every refusal in A9's table, and C2's preview, is one sentence with its ac
   const want = {
     not_signed_in: ["Sign in again: your session ended.", ACTIONS.SIGN_IN],
     terms_changed: ["Sign in again: your session ended.", ACTIONS.SIGN_IN],
-    free_tier_not_eligible: ["The free playground is for wallets that have made a transaction on Robinhood Chain, or hold a few cents of ETH there.", ACTIONS.ADD_ETH],
+    // The user's mockup (AP, 2026-09-30), under the title "This wallet isn't eligible yet".
+    free_tier_not_eligible: ["Free use requires a sent transaction or a small ETH balance on Robinhood Chain.", ACTIONS.ADD_ETH],
     free_tier_ip_limit: ["Your network has started its 10 new free accounts today. Wallets already signed up still work.", null],
     free_allowance_used: ["Today's free use is spent, or this conversation is too long for what is left.", ACTIONS.NEW_CHAT],
     free_tier_limit: ["This conversation is too long for the free playground.", ACTIONS.NEW_CHAT],

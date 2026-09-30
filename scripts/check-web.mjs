@@ -37,7 +37,7 @@ const SENDERS = new Set(["trade/sequence.js", "wallet/embedded.js"]);
 /** Each vendored bundle, and the one module allowed to import it. */
 const VENDOR_IMPORTERS = { "vendor/wallet.js": "wallet/embedded.js", "vendor/charts.js": "pages/tokenChart.js" };
 /** The other pages' code, walked for the import rules only (P2e, 8): it may not reach a vendored bundle. */
-const OTHER_ROOTS = ["ai", "landing"].map((d) => `${PUBLIC}${d}/`);
+const OTHER_ROOTS = ["ai", "landing", "docs"].map((d) => `${PUBLIC}${d}/`);
 /**
  * The one shape a specifier may take: a plain relative path to a .js file
  * (P2e, 8). Anything else could name a module past the rules below: a URL to

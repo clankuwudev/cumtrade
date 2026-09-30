@@ -16,10 +16,11 @@
 import { $, $$, html, paint } from "../js/core/dom.js";
 import { maker } from "../landing/live.js";
 import { GatewayRefusal, HISTORY_BYTES, PICTURE_PROMPT_CHARS, PICTURE_SIZES, trimHistory } from "./gateway.js";
+import { icon } from "./icons.js";
 import { initial } from "./models.js";
 import { addCall, dollars, emptySession, kb, looksLikePhrase, picturesLeft, picturesOffered, picturesPerDay, playState, replyParts, short } from "./state.js";
 import { discoverOwn, ownAccount, ownSigner, tradingSigner } from "./wallets.js";
-import { ACTIONS, PICTURE, PLAY, SUGGEST, SUGGEST_PICTURES, refusal, tooLong } from "./words.js";
+import { ACTIONS, PICTURE, PLAY, SUGGEST, SUGGEST_CARDS, SUGGEST_PICTURES, SUGGEST_PICTURE_CARDS, refusal, refusalTitle, tooLong } from "./words.js";
 
 
 /** Set before Google or X take the visitor away, so the sign-in carries on when they come back. This tab only. */
@@ -81,6 +82,7 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     if (!active()) return;
     const st = S.state;
     if (st === "in" && picMode()) return picsLeft() === 0 ? host("noPictures") : host("pictures", picsLeft() ?? perDay());
+    if (st === "in" && S.free?.eligible === false) return host("notEligible");
     if (st === "in") return host("in", dollars(S.free?.left_usd));
     if (st === "preview-denied") return host("previewDenied");
     if (st === "out" || (S.chooser && st === "preview")) return host("out");
@@ -96,9 +98,9 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     const p = offer();
     if (!p && S.mode === "picture") S.mode = "text";
     const m = picMode() ? p.model : freeModel();
-    $("#pg-model-av", root).textContent = m ? initial(maker(m)) : "·";
     $("#pg-model-id", root).textContent = m ?? "The free model";
-    $("#pg-model-sub", root).textContent = m ? `${maker(m)} · ${picMode() ? "free pictures" : "the free model"}` : "—";
+    $("#pg-model-sub", root).textContent = m ? maker(m) : "—";
+    $("#pg-free", root).hidden = !m || !["in", "out"].includes(S.state);
     const modes = $("#pg-mode", root);
     modes.hidden = !p;
     if (p) {
@@ -109,9 +111,6 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     left.textContent = S.state !== "in" ? "" : picMode()
       ? PICTURE.left(picsLeft() ?? perDay(), perDay()) : PLAY.left(dollars(S.free.left_usd));
     $("#pg-new", root).hidden = S.state !== "in";
-    const out = $("#pg-out", root);
-    out.hidden = !S.account || !["in", "preview-denied"].includes(S.state);
-    $("#pg-who", root).textContent = out.hidden ? "" : short(S.account.address);
   }
 
   // ------------------------------------------------------- the states --
@@ -155,8 +154,8 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
   function drawChat() {
     paint(body, html`<div class="cai-thread" id="pg-thread"></div><div class="cai-thread" id="pg-pics" hidden></div>
       <div class="cai-dock"><form class="cai-composer" id="pg-form">
-        <p class="cai-warn" role="note"><span class="cai-warn-i" aria-hidden="true">!</span><span><b>${PLAY.warn[0]}</b> ${PLAY.warn[1]}</span></p>
-        <div class="cai-box"><label for="pg-prompt" class="sr" id="pg-prompt-l">Message</label><textarea id="pg-prompt" rows="2" placeholder="${`Message ${model()}`}"></textarea>
+        <p class="cai-warn" role="note">${icon("lock")}<span>${PLAY.warn}</span></p>
+        <div class="cai-box"><label for="pg-prompt" class="sr" id="pg-prompt-l">Message</label><textarea id="pg-prompt" rows="2" placeholder="${`Message ${model()}…`}"></textarea>
           <div class="cai-box-foot"><span class="cai-hint" id="pg-hint">${PLAY.hint}</span><div class="cai-shapes" id="pg-shapes" role="group" aria-label="${PICTURE.shape}" hidden>${PICTURE_SIZES.map((r) =>
             html`<button type="button" data-pg-ratio="${r}" aria-pressed="${String(r === S.ratio)}">${r}</button>`)}</div><span class="cai-bytes num" id="pg-bytes" hidden></span><button class="cai-send" type="submit" id="pg-send" disabled>Send</button></div></div>
         <p class="cai-under" id="pg-under">${PLAY.under}</p>
@@ -176,11 +175,14 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     $("#pg-shapes", root).hidden = !pic;
     $("#pg-hint", root).hidden = pic;
     $("#pg-prompt-l", root).textContent = pic ? PICTURE.placeholder : "Message";
-    ta.placeholder = pic ? PICTURE.placeholder : `Message ${model()}`;
+    ta.placeholder = pic ? PICTURE.placeholder : `Message ${model()}…`;
     $("#pg-under", root).textContent = pic ? PICTURE.label : PLAY.under;
     for (const b of $$("[data-pg-ratio]", root)) b.setAttribute("aria-pressed", String(b.dataset.pgRatio === S.ratio));
     setBusy(busy());
   }
+
+  /** The starting points as cards (AP): an icon, a label, the prompt itself, and a chevron. */
+  const starts = (prompts, cards) => html`<div class="cai-sugs">${prompts.map((s, i) => html`<button type="button" class="cai-sug" data-sug="${s}">${icon(cards[i]?.[1] ?? "sparkle", "cai-ico cai-sug-i")}<span class="cai-sug-t"><b>${cards[i]?.[0] ?? ""}</b><span>${s}</span></span>${icon("chevron", "cai-ico cai-sug-c")}</button>`)}</div>`;
 
   /** Picture mode's empty thread: a start, and anything that stops a picture before one is asked. */
   function drawFreshPics() {
@@ -188,9 +190,9 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     if (!th) return;
     const p = offer();
     paint(th, html`<div class="cai-suggest"><span class="cai-mono-s">${PICTURE.newTag(p?.model ?? "the picture model")}</span><h3>${PICTURE.newTitle}</h3><p>${PICTURE.newLine(perDay())}</p>
-      <div class="cai-sugs">${SUGGEST_PICTURES.map((s) => html`<button type="button" data-sug>${s}</button>`)}</div></div>`);
-    if (picsLeft() === 0) notice(th, refusal({ code: "free_allowance_used" }, { picture: true, perDay: perDay() }));
-    else if (p?.open === false) notice(th, refusal({ code: "free_tier_exhausted" }));
+      ${starts(SUGGEST_PICTURES, SUGGEST_PICTURE_CARDS)}</div>`);
+    if (picsLeft() === 0) notice(th, titled({ code: "free_allowance_used" }, { picture: true, perDay: perDay() }));
+    else if (p?.open === false) notice(th, titled({ code: "free_tier_exhausted" }));
   }
 
   /** Every picture's URL let go, and Picture mode's thread started again. */
@@ -206,13 +208,13 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     const th = $("#pg-thread", root);
     if (!th) return;
     paint(th, html`<div class="cai-suggest"><span class="cai-mono-s">${PLAY.newTag(model())}</span><h3>${PLAY.newTitle}</h3><p>${PLAY.newLine}</p>
-      <div class="cai-sugs">${SUGGEST.map((s) => html`<button type="button" data-sug>${s}</button>`)}</div></div>`);
+      ${starts(SUGGEST, SUGGEST_CARDS)}</div>`);
     const f = S.free;
     if (f?.eligible === false) {
       const code = f.reason === "ip_limit" ? "free_tier_ip_limit" : f.reason === "chain_unavailable" ? "chain_unavailable" : "free_tier_not_eligible";
-      notice(th, refusal({ code }));
+      notice(th, titled({ code }));
     } else if (f?.open === false) {
-      notice(th, refusal({ code: "free_tier_exhausted", extra: { opens_at: f.opens_at } }));
+      notice(th, titled({ code: "free_tier_exhausted", extra: { opens_at: f.opens_at } }));
     }
   }
 
@@ -237,7 +239,10 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
 
   // --------------------------------------------------------- the notes --
 
-  /** A refusal: its one sentence, when it clears, and its one action. */
+  /** A refusal's words with its title (AP): what `notice` draws. */
+  const titled = (e, o) => ({ ...refusal(e, o), title: refusalTitle(e, o) });
+
+  /** A refusal: its title, its one sentence, when it clears, and its one action. */
   function notice(into, r) {
     const act = r.action === ACTIONS.SIGN_IN ? "Sign in"
       : r.action === ACTIONS.NEW_CHAT ? "New chat"
@@ -247,7 +252,7 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     const el = document.createElement("div");
     el.className = "cai-notice";
     el.setAttribute("role", "alert");
-    paint(el, html`<p>${r.say}${r.when ? html` <span class="cai-when">Clears at ${r.when}.</span>` : html``}</p>
+    paint(el, html`${icon("alert", "cai-ico cai-notice-i")}<div class="cai-notice-t"><b>${r.title ?? "Not sent"}</b><p>${r.say}${r.when ? html` <span class="cai-when">Clears at ${r.when}.</span>` : html``}</p></div>
       ${act ? html`<button class="cai-small-btn" type="button" data-pg="${r.action}">${act}</button>` : html``}`);
     into.append(el);
     el.scrollIntoView?.({ block: "nearest" });
@@ -259,7 +264,7 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     const slot = $("#pg-notes", root);
     if (!slot) return;
     slot.replaceChildren();
-    notice(slot, refusal(e));
+    notice(slot, titled(e));
   }
 
   /** A session that ended mid-chat: its note is shown again once the sign-in is drawn. */
@@ -367,14 +372,14 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     const th = $("#pg-thread", root);
     if (!th || busy()) return;
     if (looksLikePhrase(text)) {
-      notice(th, refusal({ code: "looks_like_recovery_phrase" }));
+      notice(th, titled({ code: "looks_like_recovery_phrase" }));
       host("phrase");
       return;
     }
     const next = [...S.history, { role: "user", content: text }];
     const fit = trimHistory(next);
     if (fit.tooLong) {
-      notice(th, { say: tooLong(fit.tooLong, HISTORY_BYTES), action: null, when: null });
+      notice(th, { title: "Too long", say: tooLong(fit.tooLong, HISTORY_BYTES), action: null, when: null });
       return;
     }
     if (th.querySelector(".cai-suggest")) th.replaceChildren();
@@ -405,8 +410,7 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     } catch (e) {
       reply.remove();
       S.failed = text;
-      const r = refusal(e instanceof GatewayRefusal ? e : { code: "network" });
-      notice(th, r);
+      notice(th, titled(e instanceof GatewayRefusal ? e : { code: "network" }));
       host("refused");
       if (e?.code === "not_signed_in" || e?.code === "terms_changed") {
         // The sign-in comes next, with this note, in a preview as when open.
@@ -458,12 +462,12 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     const p = offer();
     if (!th || !p || busy()) return;
     if (looksLikePhrase(prompt)) {
-      notice(th, refusal({ code: "looks_like_recovery_phrase" }));
+      notice(th, titled({ code: "looks_like_recovery_phrase" }));
       host("phrase");
       return;
     }
     if (prompt.length > PICTURE_PROMPT_CHARS) {
-      notice(th, { say: PICTURE.tooLong(prompt.length, PICTURE_PROMPT_CHARS), action: null, when: null });
+      notice(th, { title: "Too long", say: PICTURE.tooLong(prompt.length, PICTURE_PROMPT_CHARS), action: null, when: null });
       return;
     }
     if (th.querySelector(".cai-suggest")) th.replaceChildren();
@@ -525,7 +529,7 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
         S.free = { ...S.free, pictures: { ...S.free.pictures, left_today: after } };
       }
       if (e?.code === "free_allowance_used" && S.free?.pictures) S.free = { ...S.free, pictures: { ...S.free.pictures, left_today: 0 } };
-      const said = refusal(refused, { picture: true, perDay: perDay() });
+      const said = titled(refused, { picture: true, perDay: perDay() });
       // Never a Try again that can only be refused: none is left.
       notice(th, said.action === ACTIONS.RETRY_PICTURE && picsLeft() === 0 ? { ...said, action: null } : said);
       host("refused");
@@ -703,10 +707,10 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
 
   root.addEventListener("click", (e) => {
     const t = /** @type {HTMLElement} */ (e.target);
-    const sug = t.closest?.("[data-sug]");
+    const sug = /** @type {HTMLElement | null} */ (t.closest?.("[data-sug]"));
     if (sug) {
       const ta = $("#pg-prompt", root);
-      ta.value = sug.textContent;
+      ta.value = sug.dataset.sug ?? "";
       updateBytes();
       ta.focus();
       return;
@@ -785,7 +789,6 @@ export function createPlayground({ root, gateway, login, own, host, onChange, ac
     }
   });
   $("#pg-new", root).addEventListener("click", newChat);
-  $("#pg-out", root).addEventListener("click", () => void signOut());
   root.addEventListener("input", (e) => { if (/** @type {HTMLElement} */ (e.target).id === "pg-prompt") updateBytes(); });
   root.addEventListener("keydown", (e) => {
     const t = /** @type {HTMLElement} */ (e.target);

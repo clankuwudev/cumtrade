@@ -203,6 +203,31 @@ export const aiPageHeaders = () => ({
 });
 
 /**
+ * The docs' policy (PD): the landing's, narrowed to what the docs do. They
+ * play no video, so no media, and read nothing of ours: their one connection
+ * is the gateway, for the model count, as the landing's is.
+ */
+export const DOCS_PAGE_POLICY = withTrustedTypes([
+  "default-src 'none'",
+  "script-src 'self'",
+  "style-src-elem 'self'",
+  "font-src 'self'",
+  "img-src 'self'",
+  `connect-src ${GATEWAY_ORIGIN}`,
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "report-uri /api/csp-report",
+]).join("; ");
+
+/** Every header the docs carry: the app page's set with their own policy. */
+export const docsPageHeaders = () => ({
+  ...hostedPageHeaders(),
+  "content-security-policy": DOCS_PAGE_POLICY,
+});
+
+/**
  * A refusal from a mode's gate, answered before any route sees the request.
  * `text` is a sentence a page can show. `retryAfter` (seconds) is also sent as
  * `retry-after`.

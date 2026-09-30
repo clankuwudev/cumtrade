@@ -23,14 +23,15 @@ test("the landing calls the trading app cumTrade, never cumOS", () => {
     assert.match(label, /cumTrade/);
     assert.doesNotMatch(label, /cumOS/);
   }
-  assert.match(page, /cumOS <small class="kind">Personal AI companions/);
+  assert.match(page, /<p class="cumos-label">cumOS <span>In development<\/span><\/p>/, "cumOS names the companions (CP3)");
   assert.doesNotMatch(page, /Launch cumTrade|Start with cumTrade/);
 });
 
 test("cumAI's links and words call it cumTrade", () => {
   const page = visible(read("ai/index.html"));
   assert.doesNotMatch(page, /cumOS/);
-  assert.equal((page.match(/<a href="\/trade">cumTrade<\/a>/g) ?? []).length, 2, "both footers");
+  // The Docs footer's; the sidebar's foot is the mockup's since AP (Terms and Privacy, the user 2026-09-30).
+  assert.equal((page.match(/<a href="\/trade">cumTrade<\/a>/g) ?? []).length, 1, "the Docs footer");
   assert.match(strings(read("ai/ai.js")), /\["cumTrade", "\/trade"\]/, "the command palette's entry");
   assert.match(strings(read("ai/playground.js")), /Open <a class="cai-lnk" href="\/trade">cumTrade<\/a>/);
 });

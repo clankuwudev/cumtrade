@@ -56,13 +56,13 @@ export const LIMITS: Limits = {
  * included.
  */
 export function classify(pathname: string): Class | null {
-  // The landing, the app's paths and its old names (L1).
-  if (pathname === "/" || pathname === "/trade" || pathname === "/os" || pathname === "/ai" || pathname === "/console"
+  // The landing, the app's paths and its old names (L1), and the docs (PD).
+  if (pathname === "/" || pathname === "/trade" || pathname === "/os" || pathname === "/ai" || pathname === "/docs" || pathname === "/console"
     || pathname === "/cumOS" || pathname === "/cumos" || pathname === "/terminal"
     || pathname === "/app.css" || pathname === "/phone.css"
     || pathname === "/favicon-32.png" || pathname === "/apple-touch-icon.png"
     || pathname === "/healthz" || pathname.startsWith("/js/") || pathname.startsWith("/fonts/")
-    || pathname.startsWith("/landing/") || pathname.startsWith("/ai/") || pathname.startsWith("/vendor/")) return null;
+    || pathname.startsWith("/landing/") || pathname.startsWith("/ai/") || pathname.startsWith("/docs/") || pathname.startsWith("/vendor/")) return null;
   if (pathname === "/events") return "sse";
   if (pathname === "/api/check") return "check";
   if (pathname.startsWith("/api/prepare/")) return "prepare";

@@ -262,7 +262,7 @@ const terms = () => section("terms", "Terms of use", html`
   <h3>cumAI</h3>
   <ol start="10">
     <li>cumAI passes your requests to AI models made by other companies. Their answers are written by
-      those models, not by us or by clankchan. They can be wrong, out of date, made up or offensive.
+      those models, not by us or by Yuna. They can be wrong, out of date, made up or offensive.
       Check anything that matters before you rely on it.</li>
     <li><b>No answer is financial, investment, legal or tax advice,</b> and nothing a model says is a
       reason to buy, sell or hold any token. The models know nothing live about prices, tokens or
@@ -291,8 +291,8 @@ const terms = () => section("terms", "Terms of use", html`
   </ol>`);
 
 const privacy = () => section("privacy", "Privacy", html`
-  <p>No cookies from us on this site, no analytics, no ads and no trackers. Signing in to cumAI is
-    the one exception, below. The page talks only to our servers, to Robinhood Chain&rsquo;s public
+  <p>No cookies from us on this site, no analytics scripts, no ads and no trackers. Signing in to
+    cumAI is the one exception, below. The page talks only to our servers, to Robinhood Chain&rsquo;s public
     node and, when you log in, to Coinbase.</p>
   <h3>Logging in</h3>
   <p>Logging in with Google, X or a wallet makes an account with Coinbase, not with us. Coinbase sees
@@ -331,10 +331,15 @@ const privacy = () => section("privacy", "Privacy", html`
       out. Our server keeps only a hash of it, in memory, so a restart signs everyone out.</li>
     <li><b>What our records keep:</b> for each wallet that signs in, its address. For each call: which
       model, how many tokens in and out, what it cost, and when; and for each try the model&rsquo;s
-      supplier made at it, whether it worked, the supplier&rsquo;s reference number for it, the prices
-      it was charged at, and which of your keys made it. <b>Never your prompts, the answers or the
-      pictures.</b> These records are how allowances, balances and our own books are kept, so we keep
-      them as accounting records. They are backed up, encrypted, off-site.</li>
+      supplier made at it, whether it worked, how long it took to start answering, the
+      supplier&rsquo;s reference number for it, the prices it was charged at, and which of your keys
+      made it. <b>Never your prompts, the answers or the pictures.</b> These records are how
+      allowances, balances and our own books are kept, so we keep them as accounting records. They
+      are backed up, encrypted, off-site.</li>
+    <li><b>Usage totals:</b> every hour, our server adds those records up by hour, wallet, key and
+      model (calls, tokens and charges), so you can read your own usage and we can keep our books.
+      Nothing new is collected. The totals are rebuilt from the records each hour and aren&rsquo;t
+      backed up.</li>
     <li><b>Your prompts</b> go, through our server, to the model&rsquo;s supplier and on to the company
       that makes the model. Each prompt is also checked by a content classifier run by OpenAI, through
       the same supplier. They handle it under their own privacy policies. We don&rsquo;t store

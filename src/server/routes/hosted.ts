@@ -10,7 +10,7 @@ import { indexHealth, indexedTokenTrades } from "../../core/lib/chainIndex.js";
 import { dailyUsd } from "../../core/lib/ethusd.js";
 import { ethUsd } from "../../core/lib/price.js";
 import { replayData, LEAD_MS, type ReplayData } from "../../core/record/replayData.js";
-import { aiPageHeaders, createApp, hostedPageHeaders, json, landingPageHeaders, readJson, send, type Refusal, type Route } from "../http.js";
+import { aiPageHeaders, createApp, docsPageHeaders, hostedPageHeaders, json, landingPageHeaders, readJson, send, type Refusal, type Route } from "../http.js";
 import { ledgerPayload, type LedgerResponse } from "../ledgerPayload.js";
 import { BRAND, TRUST_PROXY, WEB_DIR } from "../config.js";
 import { clientAddress, loopbackHost, publicHost } from "../origin.js";
@@ -125,6 +125,27 @@ export const aiRoute: Route = {
   },
 };
 
+/**
+ * The project docs at /docs (PD): a page of their own, with their own policy,
+ * served as written like the landing. For local runs: in a release Caddy
+ * serves them, and this answers 404.
+ */
+export const docsRoute: Route = {
+  name: "docs",
+  match: (url) => url.pathname === "/docs",
+  async handle(_req, res) {
+    let html: string;
+    try {
+      html = await readFile(join(WEB_DIR, "public", "docs", "index.html"), "utf8");
+    } catch {
+      res.writeHead(404).end("not found");
+      return;
+    }
+    res.writeHead(200, docsPageHeaders());
+    res.end(html);
+  },
+};
+
 /** The app's old names, each a 301 to /trade (L1 N-D9; P2b added /os), as the Caddyfile answers them. */
 export const RENAMED_PATHS = ["/os", "/cumOS", "/cumos", "/terminal"];
 export const renamedRoute: Route = {
@@ -137,10 +158,10 @@ export const renamedRoute: Route = {
 };
 
 /**
- * A page's own files, under /landing/ or /ai/, by type (L1). One flat
- * directory each, and only types that can never be a document, as a release
- * serves them under /v/<sha>/. The pages themselves, index.html, are served at
- * / and /ai and never from here.
+ * A page's own files, under /landing/, /ai/ or /docs/, by type (L1; PD). One
+ * flat directory each, and only types that can never be a document, as a
+ * release serves them under /v/<sha>/. The pages themselves, index.html, are
+ * served at /, /ai and /docs and never from here.
  */
 const LANDING_TYPES: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -173,6 +194,7 @@ const filesRoute = (dir: string): Route => ({
 });
 export const landingFilesRoute = filesRoute("landing");
 export const aiFilesRoute = filesRoute("ai");
+export const docsFilesRoute = filesRoute("docs");
 
 /**
  * The files under /vendor/ that may be served, and as what: the trading
@@ -362,7 +384,7 @@ function busyFor(e: unknown): number {
   return 0;
 }
 
-export const hostedRoutes: Route[] = [configRoute, landingRoute, aiRoute, pageRoute, renamedRoute, landingFilesRoute, aiFilesRoute, prepareRoute, ledgerRoute(), replayRoute(), healthzRoute, vendorRoute];
+export const hostedRoutes: Route[] = [configRoute, landingRoute, aiRoute, docsRoute, pageRoute, renamedRoute, landingFilesRoute, aiFilesRoute, docsFilesRoute, prepareRoute, ledgerRoute(), replayRoute(), healthzRoute, vendorRoute];
 
 /**
  * What hosted refuses before any route runs (public-release B5.2). The host

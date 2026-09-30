@@ -39,7 +39,7 @@ const TABLE = {
   not_signed_in: { say: "Sign in again: your session ended.", action: ACTIONS.SIGN_IN },
   terms_changed: { say: "Sign in again: your session ended.", action: ACTIONS.SIGN_IN },
   free_tier_not_eligible: {
-    say: "The free playground is for wallets that have made a transaction on Robinhood Chain, or hold a few cents of ETH there.",
+    say: "Free use requires a sent transaction or a small ETH balance on Robinhood Chain.",
     action: ACTIONS.ADD_ETH,
   },
   free_tier_ip_limit: {
@@ -136,6 +136,53 @@ export function refusal(e, { picture = false, perDay = 2 } = {}) {
   return { say, action: row.action, when: row.when ? utcTime(fields[row.when]) : null };
 }
 
+/**
+ * A refusal's title (AP, the user's mockup): a few bold words over its
+ * sentence, by the gateway's code. A code without one reads as "Not sent".
+ */
+const TITLES = {
+  not_signed_in: "Signed out",
+  terms_changed: "Signed out",
+  free_tier_not_eligible: "This wallet isn't eligible yet",
+  free_tier_ip_limit: "No new accounts today",
+  free_allowance_used: "Today's allowance is used",
+  free_tier_exhausted: "The playground is busy",
+  free_tier_limit: "This chat is too long",
+  looks_like_recovery_phrase: "Not sent",
+  free_tier_off: "Paused",
+  free_tier_preview: "Private preview",
+  free_tier_unavailable: "Not answering",
+  chain_unavailable: "Not answering",
+  network: "Not answering",
+  sign_in_failed: "Sign-in failed",
+  wallet_declined: "Not signed",
+  wallet_refused: "Not signed",
+  login_failed: "Login failed",
+  content_blocked: "Blocked",
+  key_cooling_down: "Cooling down",
+};
+const PICTURE_TITLES = {
+  free_allowance_used: "No pictures left today",
+  picture_withheld: "Withheld",
+  network: "No answer",
+  pictures_failing: "Pictures paused",
+  pictures_busy: "Pictures are busy",
+  rate_limited: "One at a time",
+  free_pictures_off: "Paused",
+  free_tier_model: "Reload the page",
+  free_tier_limit: "Reload the page",
+  bad_request: "Not sent",
+};
+
+/** The title over a refusal's sentence. */
+export function refusalTitle(e, { picture = false } = {}) {
+  const code = typeof e?.code === "string" ? e.code : "network";
+  if (picture && PICTURE_TITLES[code]) return PICTURE_TITLES[code];
+  if (picture && !GATEWAYS_OWN.has(code) && !TABLE[code]) return "Picture not made";
+  if (picture && PICTURE_TABLE[code]) return "Picture not made";
+  return TITLES[code] ?? (TABLE[code] || GATEWAYS_OWN.has(code) ? "Not sent" : TITLES.network);
+}
+
 /** The codes the table has words for, for the tests. */
 export const KNOWN_CODES = Object.freeze([...Object.keys(TABLE), ...GATEWAYS_OWN]);
 /** The codes Picture mode says its own way. */
@@ -173,6 +220,7 @@ export const HOST = Object.freeze({
   out: () => ["sleepy", "Sign in and I'll open the playground."],
   signing: (own) => ["sparkle", own ? "Your wallet is asking you to sign. It costs nothing." : "Signing in with the trading wallet."],
   in: (left) => ["smug", `Free model's warmed up. ${left} left today.`],
+  notEligible: () => ["smug", "Your wallet needs one more step to use the free playground."],
   typing: (model) => ["sparkle", `It's typing. Not me: ${model}.`],
   done: (cost) => ["smug", cost ? `Done. That one cost ${cost}.` : "Done."],
   stopped: () => ["sweating", "Stopped. You only pay for what arrived."],
@@ -217,11 +265,11 @@ export const PLAY = Object.freeze({
   ownNone: "No wallet found in this browser.",
   newTag: (model) => `New chat · ${model}`,
   newTitle: "Ask it anything.",
-  newLine: "Free, a little each day. Or start from one of these.",
-  warn: ["Never paste a recovery phrase or private key into a chat,", "or into any site you don't fully trust. Whoever has it has the wallet."],
-  hint: "Enter sends · Shift+Enter new line",
+  newLine: "Start with a question, an idea, or a little curiosity.",
+  warn: "Never share a recovery phrase or private key.",
+  hint: "Enter to send · Shift + Enter for a new line",
   used: (n, of) => `${n} of ${of} used`,
-  under: "Not financial advice, and not cumLabs support. It knows nothing live about prices. Answers can be wrong. Chats are not saved.",
+  under: "AI can be wrong. Not financial advice or cumLabs support. Chats are not saved.",
   left: (left) => `${left} left today · resets 00:00 UTC`,
   addEth: "Send a few cents of ETH on Robinhood Chain to your trading wallet:",
 });
@@ -255,10 +303,15 @@ export const SUGGEST_PICTURES = Object.freeze([
 /** The new chat's starting points. None asks for advice about a token or a trade. */
 export const SUGGEST = Object.freeze([
   "Explain a bonding curve in two sentences.",
-  "Write a Python function that retries a request with backoff.",
-  "What does an ERC-20 approve actually allow?",
-  "Summarize what an OpenAI-compatible API is, for a beginner.",
+  "Write a Python function with retry and backoff.",
+  "What does an ERC-20 approval allow?",
+  "Explain an OpenAI-compatible API.",
 ]);
+
+/** Each starting point's card (AP): its label and icon, in SUGGEST's order. */
+export const SUGGEST_CARDS = Object.freeze([["Learn", "book"], ["Code", "code"], ["Understand", "bulb"], ["Explore", "sparkle"]]);
+/** Picture mode's cards, in SUGGEST_PICTURES' order. */
+export const SUGGEST_PICTURE_CARDS = Object.freeze([["Scene", "image"], ["Map", "map"], ["City", "city"], ["Photo", "camera"]]);
 
 // ------------------------------------------------------------ the status --
 //

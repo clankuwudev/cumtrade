@@ -20,41 +20,41 @@
 <main class="cai" id="cai">
   <header class="cai-top">
     <a class="cai-brand" href="#/playground" aria-label="cumAI, Playground"><img class="cai-mark" src="/apple-touch-icon.png" alt="" width="24" height="24"><b class="nm">cumAI</b><small>by <span class="nm">cumLabs</span></small></a>
-    <button class="cai-cmdk" type="button" id="cmdk-open" aria-haspopup="dialog"><span aria-hidden="true">⌕</span><span class="cai-cmdk-t">Search models, docs, actions</span><kbd>Ctrl K</kbd></button>
+    <button class="cai-cmdk" type="button" id="cmdk-open" aria-haspopup="dialog"><svg class="cai-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 17.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM20 20l-4.4-4.4"/></svg><span class="cai-cmdk-t">Search models, docs, actions</span><kbd>Ctrl K</kbd></button>
     <div class="cai-chips">
-      <span class="cai-chip amber" id="hdr-free" title="Today's free allowance" hidden><i></i>FREE <b class="num" id="hdr-free-v"></b></span>
-      <span class="cai-chip wallet" id="hdr-wallet" title="Signed in to the playground" hidden><i></i><b id="hdr-wallet-v"></b></span>
+      <!-- The account (AP): the wallet signed in to the playground, its menu, and Sign out. -->
+      <div class="cai-acct" id="hdr-acct" hidden>
+        <button class="cai-chip wallet" type="button" id="hdr-wallet" title="Signed in to the playground" aria-haspopup="menu" aria-expanded="false" aria-controls="hdr-menu"><b class="mo" id="hdr-wallet-v"></b><svg class="cai-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="cai-menu" id="hdr-menu" role="menu" aria-label="Account" hidden>
+          <button type="button" role="menuitem" id="hdr-copy" data-copy="">Copy address</button>
+          <button type="button" role="menuitem" data-act="sign-out">Sign out</button>
+        </div>
+        <button class="cai-chip" type="button" id="hdr-out" data-act="sign-out">Sign out</button>
+      </div>
       <a class="cai-chip link" href="/" title="Back to the Clank Uwu Model landing page">Clank Uwu Model ↗</a>
     </div>
   </header>
 
   <nav class="cai-side" aria-label="cumAI">
     <div class="cai-side-g">
-      <span class="cai-side-h">Build</span>
-      <a href="#/playground" data-ai-tab="playground"><span>Playground</span><kbd>P</kbd></a>
-      <a href="#/models" data-ai-tab="models"><span>Models</span><em class="num" id="side-count"></em></a>
-      <a href="#/docs" data-ai-tab="docs"><span>Docs</span><kbd>D</kbd></a>
-      <a href="#/status" data-ai-tab="status"><span>Status</span><em class="cai-st-side"><i class="cai-sdot" id="side-st"></i></em></a>
+      <a href="#/playground" data-ai-tab="playground"><svg class="cai-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 4.5v15L19.5 12z"/></svg><span>Playground</span></a>
+      <a href="#/models" data-ai-tab="models"><svg class="cai-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9zM4 7.5 12 12l8-4.5M12 12v9"/></svg><span>Models</span></a>
+      <a href="#/docs" data-ai-tab="docs"><svg class="cai-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/></svg><span>Docs</span></a>
+      <a href="#/status" data-ai-tab="status"><svg class="cai-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><span>Status</span><em class="cai-st-side"><i class="cai-sdot" id="side-st"></i></em></a>
     </div>
-    <div class="cai-side-status" aria-label="Status">
-      <div><i id="st-gateway-dot" class="g"></i>gateway<b id="st-gateway">…</b></div>
-      <div><i id="st-play-dot" class="a"></i>playground<b id="st-play">…</b></div>
-      <div><i class="a"></i>paid keys<b>next</b></div>
-    </div>
-    <p class="cai-legal">Beta. Not financial advice. Not affiliated with clank.trade. <a href="/trade#/learn/terms">Terms</a> · <a href="/trade">cumTrade</a> · <a href="https://t.me/clankuwu" target="_blank" rel="noopener noreferrer">Telegram</a><br>Release <span class="mo" id="release">local</span></p>
+    <p class="cai-legal">Beta. Not financial advice. Not affiliated with clank.trade.<span class="cai-legal-l"><a href="/trade#/learn/terms">Terms</a><a href="/trade#/learn/privacy">Privacy</a></span></p>
   </nav>
 
   <section class="cai-main" id="cai-main">
-    <div class="cai-host-mini"><img data-host-img="mini" src="/art/e10-sleepy.webp" alt="" width="1024" height="1024"><p><span class="cai-host-who">clankchan · host</span><span data-host-line>Checking whether the playground's open.</span></p></div>
+    <div class="cai-host-mini"><img data-host-img="mini" src="/art/e10-sleepy.webp" alt="" width="1024" height="1024"><p><span class="cai-host-who">Yuna · host</span><span data-host-line>Checking whether the playground's open.</span></p></div>
 
     <!-- Playground (X20 A8, A9; C-D3 to C-D5): drawn by playground.js for each state. -->
     <div class="cai-panel cai-pgx" data-ai-panel="playground">
       <div class="cai-pgbar">
-        <button class="cai-msel" type="button" id="pg-model" title="Browse the models"><span class="ai-av" id="pg-model-av">·</span><span><b id="pg-model-id">The free model</b><small id="pg-model-sub">—</small></span><span aria-hidden="true">▾</span></button>
+        <button class="cai-msel" type="button" id="pg-model" title="Browse the models"><span class="cai-msel-i"><svg class="cai-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9zM4 7.5 12 12l8-4.5M12 12v9"/></svg></span><span class="cai-msel-t"><b id="pg-model-id">The free model</b><small id="pg-model-sub">—</small></span><span class="cai-freetag" id="pg-free" hidden>Free</span><svg class="cai-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="ai-seg cai-mode" id="pg-mode" role="group" aria-label="Text or picture" hidden></div>
+        <button class="cai-small-btn cai-new" type="button" id="pg-new" hidden>New chat</button>
         <span class="cai-pgleft num" id="pg-left" hidden></span>
-        <span class="cai-pgwho"><span id="pg-who"></span><button class="cai-small-btn" type="button" id="pg-out" hidden>Sign out</button></span>
-        <button class="cai-small-btn" type="button" id="pg-new" hidden>New chat</button>
       </div>
       <div class="cai-pgbody" id="pg-body" aria-live="polite"></div>
     </div>
@@ -123,6 +123,8 @@
         </div>
       </div>
       <p class="ai-fine">First token: the median time until the first word arrives. Speed: the median tokens a second of whole answers. Both from real calls and scheduled checks, where there are any.</p>
+      <!-- The release this page is (AP): read by the deploy's check, so it stays on the page. -->
+      <p class="ai-fine cai-release">Release <span class="mo" id="release">local</span></p>
     </div>
 
     <!-- Docs (X20 A11): a quickstart, then the reference, as 01a03e1 checked it. -->
@@ -274,8 +276,8 @@ reply = client.chat.completions.create(
 
   <aside class="cai-insp" aria-label="Inspector">
     <div class="cai-host">
-      <div class="cai-host-face"><img data-host-img="big" src="/art/e10-sleepy.webp" alt="clankchan, sleepy" width="1024" height="1024"></div>
-      <div class="cai-host-say"><span class="cai-host-who">clankchan · host</span><p data-host-line>Checking whether the playground's open.</p></div>
+      <div class="cai-host-face"><img data-host-img="big" src="/art/e10-sleepy.webp" alt="Yuna, sleepy" width="1024" height="1024"></div>
+      <div class="cai-host-say"><span class="cai-host-who">Yuna · host</span><p data-host-line>Checking whether the playground's open.</p></div>
     </div>
     <div class="cai-insp-body" id="cai-insp-body"></div>
   </aside>

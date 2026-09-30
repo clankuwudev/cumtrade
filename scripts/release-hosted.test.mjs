@@ -45,6 +45,7 @@ const sha = execFileSync("git", ["rev-parse", "--verify", `${REF}^{commit}`], { 
 const APP = PAGES.find((p) => p.name === "app");
 const LANDING = PAGES.find((p) => p.name === "landing");
 const AIPAGE = PAGES.find((p) => p.name === "ai");
+const DOCSPAGE = PAGES.find((p) => p.name === "docs");
 const OUT = join(REPO, "releases", `hosted-${sha}`);
 const TARBALL = `${OUT}.tar.gz`;
 
@@ -96,14 +97,21 @@ ok("no native module", !files.some((f) => f.endsWith(".node")));
 ok("no command shims", !files.some((f) => f.includes("node_modules/.bin/")));
 
 console.log("\nthe pages, from the release (H1.2, L1)");
-ok("the release has both pages, each with its policy, and its manifest",
-  [APP.file, APP.policyFile, LANDING.file, LANDING.policyFile, AIPAGE.file, AIPAGE.policyFile, MANIFEST_FILE].every((f) => files.includes(f)));
+ok("the release has every page, each with its policy, and its manifest",
+  [APP.file, APP.policyFile, LANDING.file, LANDING.policyFile, AIPAGE.file, AIPAGE.policyFile, DOCSPAGE.file, DOCSPAGE.policyFile, MANIFEST_FILE]
+    .every((f) => files.includes(f)));
 // cumAI's own page (L4b): rendered as the landing is, with its own policy.
 const aiPage = readFileSync(join(OUT, ...AIPAGE.file.split("/")), "utf8");
 const aiAssets = [...aiPage.matchAll(/<(?:link|script|img)\b[^>]*\s(?:href|src)="(\/[^"]*)"/g)].map((m) => m[1]);
 ok("cumAI's page loads every asset from /v/<sha>/, each in the release, and shows its sha",
   aiAssets.length > 0 && aiAssets.every((u) => u.startsWith(`/v/${sha}/`) && files.includes(`src/web/public/${u.slice(`/v/${sha}/`.length)}`))
     && aiPage.includes(`id="release">${sha}<`), aiAssets.join(", "));
+// The project docs (PD): rendered as the landing is, with their own policy.
+const docsPage = readFileSync(join(OUT, ...DOCSPAGE.file.split("/")), "utf8");
+const docsAssets = [...docsPage.matchAll(/<(?:link|script|img)\b[^>]*\s(?:href|src)="(\/[^"]*)"/g)].map((m) => m[1]);
+ok("the docs load every asset from /v/<sha>/, each in the release, show their sha, and have no inline script",
+  docsAssets.length > 0 && docsAssets.every((u) => u.startsWith(`/v/${sha}/`) && files.includes(`src/web/public/${u.slice(`/v/${sha}/`.length)}`))
+    && docsPage.includes(`id="release">${sha}<`) && !/<script(?![^>]*\bsrc=)[^>]*>/.test(docsPage), docsAssets.join(", "));
 const page = readFileSync(join(OUT, ...APP.file.split("/")), "utf8");
 ok("the page loads its modules from /v/<sha>/", page.includes(`src="/v/${sha}/js/main.js"`) && !page.includes('src="/js/main.js"'));
 ok("…and its stylesheet", page.includes(`href="/v/${sha}/app.css"`) && !page.includes('href="/app.css"'));
@@ -131,8 +139,8 @@ ok("…links to the app by its path, not under /v/", /<a href="\/trade">/.test(l
 ok("…has no inline script and shows its sha in the footer",
   !/<script(?![^>]*\bsrc=)[^>]*>/.test(landing) && landing.includes(`id="release">${sha}<`));
 ok("…and loads no wallet module", !/vendor\/|js\/wallet|wallet\.js/.test(landing));
-ok("nothing under /v/<sha>/ is a document: neither page's source, and only served types",
-  !served.includes("app.html") && !served.includes("landing/index.html")
+ok("nothing under /v/<sha>/ is a document: no page's source, and only served types",
+  !served.includes("app.html") && !served.includes("landing/index.html") && !served.includes("ai/index.html") && !served.includes("docs/index.html")
     && classifyPublic(served).refused.length === 0 && classifyPublic(served).skipped.length === 0,
   [...classifyPublic(served).refused, ...classifyPublic(served).skipped.map((s) => s.path)].join(", "));
 // P1a: each page names every module its entry imports statically, so the
@@ -159,7 +167,7 @@ const pageSource = (p) => execFileSync("git", ["cat-file", "blob", `${sha}:src/w
 /** What the release preloads for a page, as the renderers take it. */
 const preloadOf = (p) => staticImports(entryModule(pageSource(p), p.source), { read: (f) => readFileSync(join(OUT, ...f.split("/"))) });
 function dirnameOf(f) { return f.includes("/") ? f.slice(0, f.lastIndexOf("/")) : ""; }
-for (const [p, html] of [[APP, page], [AIPAGE, aiPage], [LANDING, landing]]) {
+for (const [p, html] of [[APP, page], [AIPAGE, aiPage], [LANDING, landing], [DOCSPAGE, docsPage]]) {
   const entry = entryModule(pageSource(p), p.source);
   const want = importClosure(entry);
   const got = [...html.matchAll(/<link rel="modulepreload" href="\/v\/([0-9a-f]{40})\/([^"]+)">/g)];
@@ -207,6 +215,9 @@ ok(`${AIPAGE.policyFile} is AI_PAGE_POLICY, one line, as compiled into this rele
   aiPolicy === compiled.AI_PAGE_POLICY && !/[\r\n]/.test(aiPolicy), aiPolicy);
 ok(`${LANDING.policyFile} is LANDING_PAGE_POLICY, one line, as compiled into this release`,
   landingPolicy === compiled.LANDING_PAGE_POLICY && !/[\r\n]/.test(landingPolicy), landingPolicy);
+const docsPolicy = readFileSync(join(OUT, ...DOCSPAGE.policyFile.split("/")), "utf8");
+ok(`${DOCSPAGE.policyFile} is DOCS_PAGE_POLICY, one line, as compiled into this release`,
+  docsPolicy === compiled.DOCS_PAGE_POLICY && !/[\r\n]/.test(docsPolicy), docsPolicy);
 
 console.log("\nthe manifest");
 const manifestBytes = readFileSync(join(OUT, MANIFEST_FILE), "utf8");
@@ -251,7 +262,7 @@ console.log("\nthe Caddyfile serves it (deploy/Caddyfile)");
 const caddy = readFileSync(join(REPO, "deploy", "Caddyfile"), "utf8").replace(/\r\n/g, "\n");
 // Each page's block (L1): its matcher, its file, its policy file, and the
 // fixed headers its function lists.
-for (const [p, matcher] of [[LANDING, "landing"], [APP, "page"], [AIPAGE, "ai"]]) {
+for (const [p, matcher] of [[LANDING, "landing"], [APP, "page"], [AIPAGE, "ai"], [DOCSPAGE, "docs"]]) {
   const pageBlock = block(caddy, `handle @${matcher} {`);
   const caddyHeaders = Object.fromEntries(block(pageBlock, "header {").split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
     const i = l.indexOf(" ");
@@ -373,6 +384,7 @@ console.log("\nbooting it as the server will");
         const bareOs = await get(port, "/trade", `localhost:${port}`);
         const bareAi = await get(port, "/ai", `localhost:${port}`);
         const bareConsole = await get(port, "/console", `localhost:${port}`);
+        const bareDocs = await get(port, "/docs", `localhost:${port}`);
         writeFileSync(nodeCopy, source);
         const route = await get(port, "/trade", `localhost:${port}`);
         rmSync(nodeCopy, { force: true });
@@ -381,7 +393,7 @@ console.log("\nbooting it as the server will");
         const landingRoute = await get(port, "/", `localhost:${port}`);
         rmSync(landingCopy, { force: true });
         const renamed = await get(port, "/terminal", `localhost:${port}`);
-        return done({ health: h, bare, bareOs, bareAi, bareConsole, route, landingRoute, renamed });
+        return done({ health: h, bare, bareOs, bareAi, bareConsole, bareDocs, route, landingRoute, renamed });
       }
       await new Promise((res) => setTimeout(res, 250));
     }
@@ -390,9 +402,10 @@ console.log("\nbooting it as the server will");
   rmSync(nodeCopy, { force: true });
   rmSync(landingCopy, { force: true });
   ok("plain node boots the release and /healthz answers", r.health?.status === 200, r.health ? r.health.body : r.out.slice(0, 300));
-  ok("Node has no page to write in a release: /, /trade, /ai and /console are 404 (H1.2)",
-    r.bare?.status === 404 && r.bareOs?.status === 404 && r.bareAi?.status === 404 && r.bareConsole?.status === 404 && !r.bare?.headers["content-security-policy"],
-    `${r.bare?.status} ${r.bareOs?.status} ${r.bareAi?.status} ${r.bareConsole?.status}`);
+  ok("Node has no page to write in a release: /, /trade, /ai, /console and /docs are 404 (H1.2)",
+    r.bare?.status === 404 && r.bareOs?.status === 404 && r.bareAi?.status === 404 && r.bareConsole?.status === 404 && r.bareDocs?.status === 404
+      && !r.bare?.headers["content-security-policy"],
+    `${r.bare?.status} ${r.bareOs?.status} ${r.bareAi?.status} ${r.bareConsole?.status} ${r.bareDocs?.status}`);
   ok("the release's landing is what the landing route writes, with its assets under /v/<sha>/",
     r.landingRoute?.status === 200 && renderLanding(r.landingRoute.body, sha, undefined, preloadOf(LANDING)).page === landing, `${r.landingRoute?.status}`);
   ok("…and the route's headers are landingPageHeaders(), the ones the manifest lists",
@@ -443,7 +456,7 @@ console.log("\nverify-live, against a server that routes the release as the Cadd
       return [l.slice(0, i), l.slice(i + 1).replace(/^"(.*)"$/, "$1")];
     }));
   const fixedOf = (opener) => Object.fromEntries(Object.entries(headerBlock(opener)).filter(([k]) => k !== "Content-Security-Policy"));
-  const pageFixed = { landing: fixedOf("handle @landing {"), app: fixedOf("handle @page {"), ai: fixedOf("handle @ai {") };
+  const pageFixed = { landing: fixedOf("handle @landing {"), app: fixedOf("handle @page {"), ai: fixedOf("handle @ai {"), docs: fixedOf("handle @docs {") };
   const releaseHeaders = headerBlock("handle @release {");
   const manifestHeaders = headerBlock("handle @manifest {");
   const PUB = join(OUT, "src", "web", "public");

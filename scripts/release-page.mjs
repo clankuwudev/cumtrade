@@ -9,6 +9,7 @@
 //   /                          the landing, page/landing.html, its policy from page/landing-policy.txt
 //   /trade and /console        the app, page/index.html, its policy from page/policy.txt
 //   /ai                        cumAI, page/ai.html, its policy from page/ai-policy.txt
+//   /docs                      the project docs, page/docs.html, its policy from page/docs-policy.txt (PD)
 //   /os, /cumOS, /cumos, /terminal  a 301 to /trade (L1 N-D9; P2b)
 //   /v/<sha>/<path>            src/web/public/<path>: modules, stylesheets, fonts, art, texts
 //   /release-manifest.json     this release's manifest
@@ -35,10 +36,11 @@ export const NOT_SERVED = [
   [/^app\.html$/, "the app page itself, which a release serves from page/index.html"],
   [/^landing\/index\.html$/, "the landing page itself, which a release serves from page/landing.html"],
   [/^ai\/index\.html$/, "cumAI's page itself, which a release serves from page/ai.html"],
+  [/^docs\/index\.html$/, "the docs page itself, which a release serves from page/docs.html"],
 ];
 
 /**
- * The release's two pages (L1). Each has its source in src/web/public/, its
+ * The release's pages (L1; the docs, PD). Each has its source in src/web/public/, its
  * file and policy file in the release, the paths it answers on (as the hosted
  * routes and the Caddyfile both match them), and the function in
  * src/server/http.ts that lists every header it carries.
@@ -51,6 +53,9 @@ export const PAGES = [
   // cumAI, a page of its own (L1 L4b; N-D6, changed by the user), rendered as the landing is.
   { name: "ai", source: "ai/index.html", file: "page/ai.html", policyFile: "page/ai-policy.txt",
     paths: ["/ai"], headers: "aiPageHeaders" },
+  // The project docs, a page of their own (PD), rendered as the landing is.
+  { name: "docs", source: "docs/index.html", file: "page/docs.html", policyFile: "page/docs-policy.txt",
+    paths: ["/docs"], headers: "docsPageHeaders" },
 ];
 /** The app's old names, each a 301 to /trade. A browser keeps the fragment across it (N-D9). */
 export const RENAMED_PATHS = ["/os", "/cumOS", "/cumos", "/terminal"];
@@ -207,7 +212,7 @@ export async function pageHeaders(httpTs) {
   const out = {};
   for (const p of PAGES) {
     if (typeof mod[p.headers] !== "function") {
-      throw new Error(`src/server/http.ts has no ${p.headers}(): this commit predates ${p.name === "landing" ? "L1" : "F5.6"}`);
+      throw new Error(`src/server/http.ts has no ${p.headers}(): this commit predates ${{ landing: "L1", docs: "PD" }[p.name] ?? "F5.6"}`);
     }
     const headers = mod[p.headers]();
     const policy = headers["content-security-policy"];
@@ -241,12 +246,12 @@ export async function expectedRelease(source, sha) {
   // Each page preloads every module its entry imports statically (P1a).
   const html = Object.fromEntries(PAGES.map((p) => [p.name, need(`${PUBLIC}${p.source}`).toString("utf8")]));
   const preload = Object.fromEntries(PAGES.map((p) => [p.name, staticImports(entryModule(html[p.name], p.source), source)]));
-  // The landing and cumAI are rendered the same way: their assets under /v/<sha>/, the sha in the footer.
-  const statics = Object.fromEntries(["landing", "ai"].map((n) => {
+  // The landing, cumAI and the docs are rendered the same way: their assets under /v/<sha>/, the sha in the footer.
+  const statics = Object.fromEntries(["landing", "ai", "docs"].map((n) => {
     const src = PAGES.find((p) => p.name === n).source;
     return [n, { src, ...renderLanding(html[n], sha, src, preload[n]) }];
   }));
-  const rendered = { landing: statics.landing.page, ai: statics.ai.page, app: renderPage(html.app, sha, preload.app) };
+  const rendered = { landing: statics.landing.page, ai: statics.ai.page, docs: statics.docs.page, app: renderPage(html.app, sha, preload.app) };
   const pages = PAGES.map((p) => ({ ...p, page: rendered[p.name], ...headers[p.name] }));
   const { served, skipped, refused } = classifyPublic(source.list());
   if (refused.length) {

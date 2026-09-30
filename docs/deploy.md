@@ -15,7 +15,7 @@ builds or fetches code.
 | Path on the server | Owner | What |
 |---|---|---|
 | `/srv/clank/releases/<sha>/` | `clank-deploy`, read-only to others | One release per commit, the last five kept |
-| `/srv/clank/releases/<sha>/page/` | the same | The three pages, each with its policy, which Caddy serves: the landing (`landing.html`, `landing-policy.txt`), the app (`index.html`, `policy.txt`) and cumAI (`ai.html`, `ai-policy.txt`) |
+| `/srv/clank/releases/<sha>/page/` | the same | The four pages, each with its policy, which Caddy serves: the landing (`landing.html`, `landing-policy.txt`), the app (`index.html`, `policy.txt`), cumAI (`ai.html`, `ai-policy.txt`) and the docs (`docs.html`, `docs-policy.txt`) |
 | `/srv/clank/releases/<sha>/release-manifest.json` | the same | The hashes of the page and of every file under `/v/<sha>/` |
 | `/srv/clank/current` | `clank-deploy` | Symlink to the live release |
 | `/var/lib/clank/` | `clank-web` | Chart history and the chain index (`index.sqlite`), the only things the service writes |
@@ -27,12 +27,13 @@ builds or fetches code.
 `clank-web` runs Node and cannot write the files it serves. `clank-deploy` owns
 the releases and can restart the service, and nothing else, as root.
 
-**Node never writes a page.** Caddy serves three pages from the live release,
+**Node never writes a page.** Caddy serves four pages from the live release,
 each with its own policy file and headers fixed in the Caddyfile:
 - the landing at `/`, from `page/landing.html`, with `page/landing-policy.txt`;
 - the app at `/trade` and `/console`, from `page/index.html`, with
   `page/policy.txt`;
-- cumAI at `/ai`, from `page/ai.html`, with `page/ai-policy.txt`.
+- cumAI at `/ai`, from `page/ai.html`, with `page/ai-policy.txt`;
+- the project docs at `/docs`, from `page/docs.html`, with `page/docs-policy.txt`.
 
 `/os`, `/cumOS`, `/cumos` and `/terminal` answer 301 to `/trade`. Node answers only
 `/healthz`, `/events` and `/api/*`, and Caddy makes whatever it answers inert:
@@ -240,8 +241,8 @@ npm run verify:live -- https://<hostname>
 ```
 
 It checks, byte for byte by SHA-256:
-- all three pages at every path they answer on: the landing at `/`, the
-  app at `/trade` and `/console`, and cumAI at `/ai`, with every header each
+- all four pages at every path they answer on: the landing at `/`, the
+  app at `/trade` and `/console`, cumAI at `/ai` and the docs at `/docs`, with every header each
   must carry, its policy included. It reads the release's sha from the app
   at `/trade`;
 - that `/os`, `/cumOS`, `/cumos` and `/terminal` answer 301 to `/trade`;
@@ -250,7 +251,7 @@ It checks, byte for byte by SHA-256:
 - the live `/release-manifest.json`.
 
 It also checks that no page's source (`/v/<sha>/app.html`,
-`/v/<sha>/landing/index.html`, `/v/<sha>/ai/index.html`) is served, and that what Node
+`/v/<sha>/landing/index.html`, `/v/<sha>/ai/index.html`, `/v/<sha>/docs/index.html`) is served, and that what Node
 answers carries the sandboxing policy. It exits 1 and names every
 difference. It needs Node 22, git, and `npm ci` in the checkout: it reads
 the policy from `src/server/http.ts` at that commit with TypeScript.

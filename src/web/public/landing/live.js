@@ -173,3 +173,50 @@ export function dotColors(address) {
 
 /** The app's page for a token (N-D7's route, at /os). */
 export const tokenHref = (address) => `/trade#/token/${address}`;
+
+// ---------------------------------------------------- the calculator (CP3) --
+
+/**
+ * cumAI's own per-million prices from a /v1/models body: id → [input, output],
+ * well-formed entries only, or null when the answer is not the list. The
+ * calculator prefers these to the price book's recorded ones, so a price the
+ * gateway changes shows on the page without a site release.
+ */
+export function livePrices(body) {
+  const data = body && body.object === "list" && Array.isArray(body.data) ? body.data : null;
+  if (!data) return null;
+  const out = new Map();
+  for (const m of data) {
+    if (m && typeof m.id === "string" && ID.test(m.id)
+      && price(m.pricing?.input_usd_per_million) && price(m.pricing?.output_usd_per_million)) {
+      out.set(m.id, [m.pricing.input_usd_per_million, m.pricing.output_usd_per_million]);
+    }
+  }
+  return out.size ? out : null;
+}
+
+/**
+ * The calculator's rows: [id, maker, [official in, out], [cumAI in, out]] for
+ * each model in the price book, with cumAI's live price when the gateway lists
+ * the model and the recorded one when there is no answer. A model the gateway
+ * no longer lists is dropped: nobody could use it.
+ */
+export function calculatorRows(book, live) {
+  const rows = [];
+  for (const [id, mk, oi, oo, ri, ro] of book) {
+    if (live && !live.has(id)) continue;
+    rows.push([id, mk, [oi, oo], live ? live.get(id) : [ri, ro]]);
+  }
+  return rows;
+}
+
+/** A month at official prices and on cumAI, in dollars, for millions of tokens in and out. */
+export function monthCost([offIn, offOut], [ourIn, ourOut], inM, outM) {
+  const n = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
+  const official = n(inM) * offIn + n(outM) * offOut;
+  const ours = n(inM) * ourIn + n(outM) * ourOut;
+  return { official, ours, save: official - ours, pct: official > 0 ? Math.round((1 - ours / official) * 100) : 0 };
+}
+
+/** Dollars for the calculator: two decimals and thousands separators. */
+export const dollars = (v) => `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

@@ -3,8 +3,8 @@
 //   node scripts/verify-live.mjs <origin> [--repo <dir>] [--ref <ref>] [--resolve <host>:<port>:<address>]
 //
 // It reads the release's sha from the live app page at /trade (its footer and
-// its module URLs must agree), rebuilds that release's two pages (the landing
-// and the app), their policies and headers, the files and the manifest from
+// its module URLs must agree), rebuilds that release's pages (the landing, the
+// app, cumAI and the docs), their policies and headers, the files and the manifest from
 // the source with scripts/release-page.mjs, as the release build does, and
 // compares them with what the site serves, byte for byte, at every path each
 // page answers on. It also checks that the app's old names redirect to /trade,

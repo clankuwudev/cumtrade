@@ -10,6 +10,7 @@
 import { $, $$, html, paint } from "../js/core/dom.js";
 import { tokens, usd } from "../landing/live.js";
 import { createGateway } from "./gateway.js";
+import { icon } from "./icons.js";
 import { createLogin } from "./login.js";
 import { GATEWAY, QUICK, fetchModels, fetchPictureModels, hitIn, initial, modelView, paletteModels, scale, tabOf, thousandCalls } from "./models.js";
 import { createPlayground } from "./playground.js";
@@ -32,6 +33,8 @@ const S = {
   /** @type {any} */ status: undefined,
   statusAt: 0,
   stFilter: "all",
+  /** Whether Model details is open (AP): null until the visitor opens or closes it. */
+  /** @type {boolean | null} */ details: null,
 };
 /** How often the Status tab reads again, at most. */
 const STATUS_EVERY_MS = 60_000;
@@ -60,7 +63,7 @@ function host(name, ...args) {
     const src = new URL(`../art/${FACES[f][0]}.webp`, import.meta.url).href;
     for (const img of $$("[data-host-img]")) {
       img.src = src;
-      img.alt = img.dataset.hostImg === "big" ? `clankchan, ${FACES[f][1]}` : "";
+      img.alt = img.dataset.hostImg === "big" ? `Yuna, ${FACES[f][1]}` : "";
     }
   }
   for (const p of $$("[data-host-line]")) p.textContent = line;
@@ -82,6 +85,20 @@ const freeTag = html`<span class="cai-freetag">free</span>`;
 const rowOf = (id) => (S.rows ?? []).find((r) => r.id === id) ?? null;
 const isFree = (id) => !!S.play && OPEN.includes(S.play.state) && id === S.play.model;
 
+/**
+ * The playground's cards (AP, the user's mockup): today's allowance as one
+ * big figure, this session as three tiles, and the model's numbers folded
+ * under Model details. Picture mode counts pictures, not dollars.
+ */
+const card = (title, ico, inner, cls = "") => html`<div class="cai-card ${cls}"><div class="cai-card-h">${ico ? icon(ico) : html``}<span>${title}</span></div>${inner}</div>`;
+const tiles = (pairs) => html`<div class="cai-tiles">${pairs.map(([k, v]) => html`<div><span>${k}</span><b class="num">${v}</b></div>`)}</div>`;
+const SESSION_NOTE = "Clears when you reload or close this tab.";
+/** Model details, folded: open once the visitor opens it, or while no one is signed in. */
+function details(inner, right, signedIn) {
+  const open = S.details ?? !signedIn;
+  return html`<details class="cai-card cai-det" id="cai-det" ${open ? "open" : ""}><summary>${icon("info")}<span>Model details</span>${right}${icon("down", "cai-ico cai-det-c")}</summary>${inner}</details>`;
+}
+
 function inspPlay() {
   const p = S.play;
   // Picture mode (X15c): the picture model, and today's pictures, not chat's.
@@ -90,21 +107,24 @@ function inspPlay() {
     const price = S.pics?.find((m) => m.id === pic.model)?.tiers.find(([t]) => t === pic.tier)?.[1];
     const left = picturesLeft(pic) ?? picturesPerDay(pic);
     return [
-      ib("Model", kvm([["id", pic.model, true], ["size", String(pic.tier ?? "—")], ...(price == null ? [] : [["per picture", dollars(price)]])]), freeTag),
-      ib("This session", html`${kvm([["calls", String(p.session.calls)], ["cost", dollars(p.session.cost), true]])}<p>Not saved. A reload or a closed tab clears it.</p>`),
-      ib("Today's pictures", html`${kvm([["left", `${left} of ${picturesPerDay(pic)}`, true], ["resets", "00:00 UTC"], ["account", short(p.account?.address)]])}<div class="cai-acts"><button class="cai-small-btn" type="button" data-act="sign-out">Sign out</button></div>`),
+      card("Today's pictures", "coin", html`<b class="cai-big num">${`${left} of ${picturesPerDay(pic)} left`}</b><p>Resets at 00:00 UTC</p>`, "cai-allow"),
+      card("This session", "", html`${tiles([["Calls", String(p.session.calls)], ["Cost", dollars(p.session.cost)]])}<p>${SESSION_NOTE}</p>`),
+      details(kvm([["id", pic.model, true], ["size", String(pic.tier ?? "—")], ...(price == null ? [] : [["per picture", dollars(price)]])]), html``, true),
     ];
   }
   const r = rowOf(p?.model);
-  const blocks = [ib("Model", kvm([
+  const model = details(kvm([
     ["id", p?.model ?? "—", true],
     ...(r ? [["maker", r.maker], ["input", `${usd(r.in)}/M`], ["output", `${usd(r.out)}/M`], ["context", tokens(r.ctx)], ["max out", tokens(r.max)]] : []),
-  ]), p && OPEN.includes(p.state) ? freeTag : html``)];
-  if (p?.state === "in") {
-    blocks.push(ib("This session", html`${kvm([["calls", String(p.session.calls)], ["tokens", String(p.session.tokens)], ["cost", dollars(p.session.cost), true]])}<p>Not saved. A reload or a closed tab clears it.</p>`));
-    if (p.last) blocks.push(ib("Last call", kvm([["tokens", p.last.tokens == null ? "—" : String(p.last.tokens)], ["cost", dollars(p.last.cost ?? NaN), true], ["time", `${p.last.secs.toFixed(1)} s`]])));
-    blocks.push(ib("Today's allowance", html`${kvm([["left", dollars(p.free?.left_usd), true], ["resets", "00:00 UTC"], ["account", short(p.account?.address)]])}<div class="cai-acts"><button class="cai-small-btn" type="button" data-act="sign-out">Sign out</button></div>`));
-  }
+  ]), p && OPEN.includes(p.state) && p.state !== "in" ? freeTag : html``, p?.state === "in");
+  // Before the gateway names its free model (loading, down, off, a preview), there are no details to fold.
+  if (p?.state !== "in") return p?.model ? [model] : [];
+  const blocks = [
+    card("Today's allowance", "coin", html`<b class="cai-big num">${`${dollars(p.free?.left_usd)} left`}</b><p>Resets at 00:00 UTC</p>`, "cai-allow"),
+    card("This session", "", html`${tiles([["Calls", String(p.session.calls)], ["Tokens", String(p.session.tokens)], ["Cost", dollars(p.session.cost)]])}<p>${SESSION_NOTE}</p>`),
+  ];
+  if (p.last) blocks.push(card("Last call", "", kvm([["tokens", p.last.tokens == null ? "—" : String(p.last.tokens)], ["cost", dollars(p.last.cost ?? NaN), true], ["time", `${p.last.secs.toFixed(1)} s`]])));
+  blocks.push(model);
   return blocks;
 }
 
@@ -166,22 +186,24 @@ const inspVisible = () => {
 
 // --------------------------------------------------------- chips, status --
 
-/** The top bar's chips and the sidebar's status box, from the playground's state. */
+/** The top bar's account (AP): the wallet signed in, its menu, and Sign out. */
 function drawChrome() {
   const p = S.play;
   const st = p?.state ?? "loading";
-  $("#hdr-free").hidden = st !== "in";
-  $("#hdr-free-v").textContent = st === "in" ? dollars(p.free?.left_usd) : "";
-  const wallet = $("#hdr-wallet");
-  wallet.hidden = !p?.account || !["in", "preview-denied"].includes(st);
-  $("#hdr-wallet-v").textContent = wallet.hidden ? "" : short(p.account.address);
-  // The gateway answers when any of its reads did; the status says how well.
-  const gw = S.status?.services?.find((x) => x.id === "gateway")?.state;
-  const answering = gw || S.rows || (st !== "down" && st !== "loading") ? true : S.rows === null && st === "down" ? false : null;
-  $("#st-gateway").textContent = gw && gw !== "operational" ? gw : answering === null ? "…" : answering ? "live" : "not answering";
-  $("#st-gateway-dot").className = answering === false || gw === "down" ? "r" : gw === "degraded" ? "a" : "g";
-  $("#st-play").textContent = ({ in: "open", out: "open", preview: "preview", "preview-denied": "preview", off: "opens soon" })[st] ?? "…";
-  $("#st-play-dot").className = OPEN.includes(st) ? "g" : "a";
+  const acct = $("#hdr-acct");
+  acct.hidden = !p?.account || !["in", "preview-denied"].includes(st);
+  $("#hdr-wallet-v").textContent = acct.hidden ? "" : short(p.account.address);
+  $("#hdr-copy").dataset.copy = acct.hidden ? "" : p.account.address;
+  if (acct.hidden) menu(false);
+}
+
+/** The account menu, opened or closed. */
+function menu(open) {
+  const m = $("#hdr-menu");
+  if (!m || m.hidden === !open) return;
+  m.hidden = !open;
+  $("#hdr-wallet").setAttribute("aria-expanded", String(open));
+  if (open) /** @type {HTMLElement} */ ($("button", m)).focus();
 }
 
 function onPlay(snap) {
@@ -221,7 +243,6 @@ function showTab() {
 
 function drawModels() {
   const rows = S.rows ?? [];
-  $("#side-count").textContent = rows.length ? String(rows.length) : "";
   if (!rows.length) {
     $("#ai-tiles").hidden = true;
     paint($("#ai-rows"), html`<tr><td colspan="7" class="ai-empty">The model list isn't answering right now. Try again in a moment.</td></tr>`);
@@ -494,6 +515,11 @@ document.addEventListener("click", (e) => {
     void copy(cp.dataset.copy).then((ok) => { cp.textContent = ok ? "Copied" : "Select it"; setTimeout(() => { cp.textContent = was; }, 1500); });
     return;
   }
+  // Model details stays as the visitor leaves it, across the inspector's redraws: only a click sets it.
+  const det = near(t, "#cai-det > summary");
+  if (det) S.details = !/** @type {HTMLDetailsElement} */ (det.parentElement).open;
+  if (near(t, "#hdr-wallet")) return menu($("#hdr-menu").hidden);
+  if (!near(t, "#hdr-menu") || near(t, "[role=menuitem]")) menu(false);
   if (near(t, "[data-act=sign-out]")) return void S.pg?.signOut();
   if (near(t, "#cmdk-open")) return openPal();
   if (near(t, "#pg-model")) return openPal("models");
@@ -536,7 +562,10 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   const t = /** @type {HTMLElement} */ (e.target);
-  if (e.key === "Escape") { closePal(); closeDrawer(); return; }
+  if (e.key === "Escape") {
+    if (!$("#hdr-menu").hidden) { menu(false); $("#hdr-wallet").focus(); return; }
+    closePal(); closeDrawer(); return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
     if ($("#pal").hidden) openPal(); else closePal();

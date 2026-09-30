@@ -138,7 +138,8 @@ test("the beta section, the verdicts, moderation, privacy and the terms say what
   assert.match(words, /“No issues found” means only that these checks found nothing wrong/);
   assert.match(words, /src\/core\/checker\/rules\.ts/);
   assert.match(words, /Hiding never touches a verdict/);
-  assert.match(words, /No cookies from us on this site, no analytics, no ads and no trackers\. Signing in to cumAI is the one exception, below\./);
+  // XF4e, approved by the user ("approve"): "no analytics scripts", since the server now counts usage.
+  assert.match(words, /No cookies from us on this site, no analytics scripts, no ads and no trackers\. Signing in to cumAI is the one exception, below\./);
   assert.match(words, /at most five files of 50 MB/);
   assert.match(words, /Terms of use/);
   assert.match(words, /Smart-contract wallets/);
@@ -155,7 +156,8 @@ test("cumAI's terms and privacy, as the user approved them (stage C, C1 at f9cdc
   const group = markup.slice(markup.indexOf('<ol start="10">'), markup.indexOf("</ol>", markup.indexOf('<ol start="10">')));
   assert.equal((group.match(/<li>/g) ?? []).length, 9, "items 10 to 18");
   for (const line of [
-    /not by us or by clankchan\. They can be wrong, out of date, made up or offensive\./,
+    // Yuna, by community vote (2026-09-30); a name only, so the terms keep their version.
+    /not by us or by Yuna\. They can be wrong, out of date, made up or offensive\./,
     /No answer is financial, investment, legal or tax advice, and nothing a model says is a reason to buy, sell or hold any token\./,
     /cumAI is not our support\. It cannot see your account, your wallets or your trades\./,
     /Never paste a recovery phrase, private key, password or API key\. cumAI refuses text that looks like a recovery phrase, but that check can miss one\./,
@@ -180,6 +182,9 @@ test("cumAI's terms and privacy, as the user approved them (stage C, C1 at f9cdc
   for (const line of [
     /Signing in sets one cookie, on api\.clankuwu\.com only\. It holds a random token, can’t be read by any page’s scripts, and lasts 12 hours or until you sign out\./,
     /Never your prompts, the answers or the pictures\./,
+    // XF4e, approved by the user ("approve"): XF4d's timing, and the usage totals (XF4).
+    /for each try the model’s supplier made at it, whether it worked, how long it took to start answering, the supplier’s reference number for it/,
+    /Usage totals: every hour, our server adds those records up by hour, wallet, key and model \(calls, tokens and charges\), so you can read your own usage and we can keep our books\. Nothing new is collected\. The totals are rebuilt from the records each hour and aren’t backed up\./,
     /Pictures: your prompt goes to the supplier and the model’s maker, as above\. The finished picture comes back through our server, is checked by the same classifier together with its prompt, and is passed straight to you\. We don’t keep it\. The supplier keeps its copy for about a day\./,
     /to the model’s supplier and on to the company that makes the model\. Each prompt is also checked by a content classifier run by OpenAI, through the same supplier\./,
     /reads that wallet’s transaction count and balance on Robinhood Chain, which are public anyway/,
